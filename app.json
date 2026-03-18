@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "FieldPulse - Marketing Visits",
+    "slug": "fieldpulse-marketing",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "fieldpulse",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#1E40AF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fieldpulse.marketing",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to verify visit check-ins.",
+        "NSLocationAlwaysUsageDescription": "We need your location to track visits in the background.",
+        "NSCameraUsageDescription": "We need camera access to capture visit photos.",
+        "NSPhotoLibraryUsageDescription": "We need photo library access to attach visit evidence."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E40AF"
+      },
+      "package": "com.fieldpulse.marketing",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "FieldPulse - Marketing Visits",
+      "shortName": "FieldPulse",
+      "description": "Field agent visit tracking, client management, and real-time team monitoring",
+      "themeColor": "#1E40AF",
+      "backgroundColor": "#F8FAFC"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      "expo-image-picker",
+      "expo-font"
+    ]
+  }
+}

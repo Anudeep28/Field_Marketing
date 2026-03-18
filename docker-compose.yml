@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  fieldpulse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fieldpulse-server
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist data across container restarts/rebuilds
+      - fieldpulse-data:/app/data
+    environment:
+      - PORT=3000
+      - DATA_DIR=/app/data
+    restart: unless-stopped
+
+volumes:
+  fieldpulse-data:
+    driver: local

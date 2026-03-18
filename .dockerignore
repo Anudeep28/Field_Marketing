@@ -1,0 +1,30 @@
+node_modules/
+.expo/
+dist/
+web-build/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.env
+.git
+.gitignore
+
+# Docker files (no need to copy into the build context)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+LICENSE
+
+# Windows/Mac startup scripts
+start-fieldpulse.bat
+start-fieldpulse.sh
+
+# Existing data file (will use mounted volume)
+fieldpulse-data.json
