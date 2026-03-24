@@ -1,13 +1,16 @@
 @echo off
 REM ============================================================
-REM FieldPulse Docker Deployment Script (Windows)
-REM Production-ready deployment automation
+REM FieldPulse Marketing App - Docker Deployment Script (Windows)
+REM Auto-restart enabled | 24/7 production deployment
 REM ============================================================
 
 setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
+
+set APP_NAME=fieldpulse-marketing
+set CONTAINER_NAME=fieldpulse-marketing
 
 REM Main command dispatcher
 if "%1"=="" goto help
@@ -27,125 +30,103 @@ echo.
 goto help
 
 REM ============================================================
-REM Check Docker
+REM Preflight Checks
 REM ============================================================
-:check_docker
+:check_prerequisites
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Docker is not installed!
-    echo Please install Docker Desktop from https://docs.docker.com/get-docker/
+    echo [ERROR] Docker is not installed! Install from https://docs.docker.com/get-docker/
     exit /b 1
 )
-
 docker info >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Docker is not running!
-    echo Please start Docker Desktop and try again.
+    echo [ERROR] Docker is not running! Start Docker Desktop and try again.
     exit /b 1
 )
-
-echo [OK] Docker is running
-exit /b 0
-
-REM ============================================================
-REM Check Docker Compose
-REM ============================================================
-:check_docker_compose
 docker compose version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Docker Compose is not available!
-    echo Please install Docker Compose or update Docker Desktop.
+    echo [ERROR] Docker Compose not available! Update Docker Desktop.
     exit /b 1
 )
-
-echo [OK] Docker Compose is available
+echo [OK] Docker ^& Compose ready
 exit /b 0
 
 REM ============================================================
-REM Initial Deployment
+REM COMMAND: start - First-time deployment
 REM ============================================================
 :start
-echo ========================================
-echo   Initial Deployment
-echo ========================================
+echo.
+echo ======================================
+echo   First-Time Deployment
+echo ======================================
 echo.
 
-call :check_docker
+call :check_prerequisites
 if %errorlevel% neq 0 exit /b 1
 
-call :check_docker_compose
-if %errorlevel% neq 0 exit /b 1
-
-echo Building and starting FieldPulse...
+echo Building image and starting container...
 docker compose up -d --build
 
 if %errorlevel% neq 0 (
-    echo ERROR: Deployment failed!
+    echo [ERROR] Deployment failed!
     exit /b 1
 )
 
 echo.
-echo [SUCCESS] Deployment complete!
+echo [OK] Deployment complete! Container will auto-restart 24/7.
 echo.
-echo Access the application at:
 echo   Admin:  http://localhost:3000
 echo   Agents: http://^<YOUR_IP^>:3000
 echo.
-echo View logs with: docker-deploy.bat logs
+echo   Logs:   docker-deploy.bat logs
+echo   Status: docker-deploy.bat status
 goto end
 
 REM ============================================================
-REM Update Deployment
+REM COMMAND: update - Pull from GitHub + rebuild
 REM ============================================================
 :update
-echo ========================================
-echo   Updating Deployment
-echo ========================================
+echo.
+echo ======================================
+echo   Update from GitHub
+echo ======================================
 echo.
 
-call :check_docker
+call :check_prerequisites
 if %errorlevel% neq 0 exit /b 1
 
-call :check_docker_compose
-if %errorlevel% neq 0 exit /b 1
-
-REM Check if git repository
-if exist ".git" (
-    echo Pulling latest changes from repository...
-    
-    REM Check for uncommitted changes
-    git diff-index --quiet HEAD -- >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo Stashing local changes...
-        git stash
-    )
-    
-    REM Pull latest changes
-    git pull
-    
-    if %errorlevel% neq 0 (
-        echo ERROR: Failed to pull changes
-        exit /b 1
-    )
-    
-    echo [OK] Code updated successfully
-) else (
-    echo Not a git repository, skipping pull...
-)
-
-echo Rebuilding Docker image...
-docker compose build --no-cache
-
-if %errorlevel% neq 0 (
-    echo ERROR: Build failed!
+if not exist ".git" (
+    echo [ERROR] Not a git repository. Clone the repo first.
     exit /b 1
 )
 
-echo Restarting container with new image...
-docker compose up -d
+echo Pulling latest changes...
 
+REM Stash local changes if any
+git diff-index --quiet HEAD -- >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to start container!
+    echo Stashing local changes...
+    git stash
+)
+
+git pull
+if %errorlevel% neq 0 (
+    echo [ERROR] git pull failed
+    exit /b 1
+)
+echo [OK] Code pulled successfully
+
+echo Rebuilding image (no cache)...
+docker compose build --no-cache
+if %errorlevel% neq 0 (
+    echo [ERROR] Build failed!
+    exit /b 1
+)
+
+echo Restarting with new image...
+docker compose up -d
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to start container!
     exit /b 1
 )
 
@@ -153,85 +134,67 @@ echo Cleaning up old images...
 docker image prune -f
 
 echo.
-echo [SUCCESS] Update complete!
-echo.
-echo Application is running at http://localhost:3000
-echo View logs with: docker-deploy.bat logs
+echo [OK] Update complete! Running at http://localhost:3000
 goto end
 
 REM ============================================================
-REM Stop Deployment
+REM COMMAND: stop
 REM ============================================================
 :stop
-echo ========================================
-echo   Stopping Deployment
-echo ========================================
 echo.
-
 echo Stopping containers...
 docker compose down
-
-echo [OK] Containers stopped
+echo [OK] Stopped
 goto end
 
 REM ============================================================
-REM Restart Deployment
+REM COMMAND: restart
 REM ============================================================
 :restart
-echo ========================================
-echo   Restarting Deployment
-echo ========================================
 echo.
-
 echo Restarting containers...
 docker compose restart
-
-echo [OK] Containers restarted
+echo [OK] Restarted
 goto end
 
 REM ============================================================
-REM View Logs
+REM COMMAND: logs
 REM ============================================================
 :logs
-echo ========================================
-echo   Container Logs
-echo ========================================
-echo.
-
 docker compose logs -f --tail=100
 goto end
 
 REM ============================================================
-REM Check Status
+REM COMMAND: status
 REM ============================================================
 :status
-echo ========================================
+echo.
+echo ======================================
 echo   Deployment Status
-echo ========================================
+echo ======================================
 echo.
-
 docker compose ps
-
 echo.
-docker compose ps | findstr "Up" >nul
+
+docker compose ps | findstr /i "Up running" >nul
 if %errorlevel% equ 0 (
-    echo [OK] FieldPulse is running
+    echo [OK] %APP_NAME% is running (auto-restart: always)
     echo.
-    echo Access at: http://localhost:3000
+    echo   URL: http://localhost:3000
 ) else (
-    echo [ERROR] FieldPulse is not running
-    echo.
-    echo Start with: docker-deploy.bat start
+    echo [ERROR] %APP_NAME% is NOT running
+    echo   Start with: docker-deploy.bat start
 )
 goto end
 
 REM ============================================================
-REM Backup Data
+REM COMMAND: backup
 REM ============================================================
 :backup
-echo ========================================
+echo.
+echo ======================================
 echo   Backing Up Data
-echo ========================================
+echo ======================================
 echo.
 
 for /f "tokens=2-4 delims=/ " %%a in ('date /t') do (set mydate=%%c%%a%%b)
@@ -240,45 +203,46 @@ set BACKUP_FILE=backup-%mydate%-%mytime%.json
 
 echo Creating backup: %BACKUP_FILE%
 
-docker compose ps | findstr "Up" >nul
+docker compose ps | findstr /i "Up running" >nul
 if %errorlevel% equ 0 (
-    docker cp fieldpulse-server:/app/data/fieldpulse-data.json "./%BACKUP_FILE%" 2>nul
+    docker cp %CONTAINER_NAME%:/app/data/fieldpulse-data.json "./%BACKUP_FILE%" 2>nul
     if not exist "%BACKUP_FILE%" (
-        docker cp fieldpulse-server:/app/fieldpulse-data.json "./%BACKUP_FILE%"
+        docker cp %CONTAINER_NAME%:/app/fieldpulse-data.json "./%BACKUP_FILE%"
     )
-    
+
     if exist "%BACKUP_FILE%" (
-        echo [OK] Backup created: %BACKUP_FILE%
+        echo [OK] Backup saved: %BACKUP_FILE%
     ) else (
-        echo [ERROR] Backup failed - container may not have data yet
+        echo [ERROR] No data file found in container yet
     )
 ) else (
-    echo [ERROR] Container is not running. Start it first with: docker-deploy.bat start
+    echo [ERROR] Container not running. Start first: docker-deploy.bat start
 )
 goto end
 
 REM ============================================================
-REM Help
+REM COMMAND: help
 REM ============================================================
 :help
-echo FieldPulse Docker Deployment Script
 echo.
-echo Usage: docker-deploy.bat [command]
+echo   FieldPulse Marketing App - Docker Deploy (Windows)
 echo.
-echo Commands:
-echo   start      - Initial deployment (build and start)
-echo   update     - Pull changes from git and rebuild (USE THIS FOR UPDATES)
-echo   stop       - Stop the containers
-echo   restart    - Restart the containers
-echo   logs       - View container logs
-echo   status     - Check deployment status
-echo   backup     - Backup application data
-echo   help       - Show this help message
+echo   Usage: docker-deploy.bat ^<command^>
 echo.
-echo Examples:
-echo   docker-deploy.bat start      # First time deployment
-echo   docker-deploy.bat update     # Update after git pull
-echo   docker-deploy.bat logs       # View logs
+echo   Commands:
+echo     start     First-time build ^& deploy (auto-restart enabled)
+echo     update    Pull latest from GitHub, rebuild ^& restart
+echo     stop      Stop containers
+echo     restart   Restart containers
+echo     logs      Tail container logs
+echo     status    Show running status
+echo     backup    Export data file from container
+echo     help      Show this message
+echo.
+echo   Typical workflow:
+echo     1. First deploy:   docker-deploy.bat start
+echo     2. After git push: docker-deploy.bat update
+echo.
 goto end
 
 :end

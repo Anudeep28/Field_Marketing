@@ -1,20 +1,23 @@
-version: "3.8"
-
 services:
   fieldpulse:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fieldpulse-server
+    container_name: fieldpulse-marketing
     ports:
       - "3000:3000"
     volumes:
-      # Persist data across container restarts/rebuilds
       - fieldpulse-data:/app/data
     environment:
       - PORT=3000
       - DATA_DIR=/app/data
-    restart: unless-stopped
+      - NODE_ENV=production
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   fieldpulse-data:

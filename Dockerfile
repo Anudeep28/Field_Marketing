@@ -29,19 +29,19 @@ WORKDIR /app
 COPY server.js ./
 COPY --from=builder /app/dist ./dist
 
-# Create a directory for persistent data
-RUN mkdir -p /app/data
+# Create a directory for persistent data with proper permissions
+RUN mkdir -p /app/data && chown -R node:node /app/data
 
-# The data file will be stored in the mounted volume
-# We symlink so server.js (which uses ./fieldpulse-data.json) finds it
-# in the persistent volume location
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Run as non-root user for security
+USER node
 
 EXPOSE 3000
 
 # Health check to verify the server is running
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/ || exit 1
 
 CMD ["node", "server.js"]

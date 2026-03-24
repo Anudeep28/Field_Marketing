@@ -22,9 +22,9 @@ docker-compose.yml
 *.md
 LICENSE
 
-# Windows/Mac startup scripts
-start-fieldpulse.bat
-start-fieldpulse.sh
+# Deploy scripts (not needed inside container)
+docker-deploy.sh
+docker-deploy.bat
 
 # Existing data file (will use mounted volume)
 fieldpulse-data.json

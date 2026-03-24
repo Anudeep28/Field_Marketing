@@ -1,254 +1,201 @@
 #!/bin/bash
 
 # ============================================================
-# FieldPulse Docker Deployment Script
-# Production-ready deployment automation
+# FieldPulse Marketing App - Docker Deployment Script
+# Auto-restart enabled | 24/7 production deployment
 # ============================================================
 
-set -e  # Exit on any error
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Colors for output
+APP_NAME="fieldpulse-marketing"
+CONTAINER_NAME="fieldpulse-marketing"
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Helper functions
-print_header() {
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}========================================${NC}"
+print_header() { echo -e "\n${BLUE}══════════════════════════════════════${NC}\n${BLUE}  $1${NC}\n${BLUE}══════════════════════════════════════${NC}"; }
+print_ok()     { echo -e "${GREEN}  ✓ $1${NC}"; }
+print_err()    { echo -e "${RED}  ✗ $1${NC}"; }
+print_info()   { echo -e "${YELLOW}  → $1${NC}"; }
+
+get_lan_ip() {
+    hostname -I 2>/dev/null | awk '{print $1}' || \
+    ipconfig getifaddr en0 2>/dev/null || \
+    echo "<YOUR_IP>"
 }
 
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
-}
-
-print_info() {
-    echo -e "${YELLOW}→ $1${NC}"
-}
-
-# Check if Docker is installed and running
-check_docker() {
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed!"
-        echo "Please install Docker from https://docs.docker.com/get-docker/"
+# ── Preflight checks ────────────────────────────────────────
+check_prerequisites() {
+    if ! command -v docker &>/dev/null; then
+        print_err "Docker is not installed! Install from https://docs.docker.com/get-docker/"
         exit 1
     fi
-    
-    if ! docker info &> /dev/null; then
-        print_error "Docker is not running!"
-        echo "Please start Docker Desktop and try again."
+    if ! docker info &>/dev/null; then
+        print_err "Docker is not running! Start Docker Desktop and try again."
         exit 1
     fi
-    
-    print_success "Docker is running"
-}
-
-# Check if Docker Compose is available
-check_docker_compose() {
-    if ! docker compose version &> /dev/null; then
-        print_error "Docker Compose is not available!"
-        echo "Please install Docker Compose or update Docker Desktop."
+    if ! docker compose version &>/dev/null; then
+        print_err "Docker Compose not available! Update Docker Desktop."
         exit 1
     fi
-    
-    print_success "Docker Compose is available"
+    print_ok "Docker & Compose ready"
 }
 
-# Initial deployment
-deploy_initial() {
-    print_header "Initial Deployment"
-    
-    check_docker
-    check_docker_compose
-    
-    print_info "Building and starting FieldPulse..."
+# ── COMMAND: start ───────────────────────────────────────────
+cmd_start() {
+    print_header "First-Time Deployment"
+    check_prerequisites
+
+    print_info "Building image and starting container..."
     docker compose up -d --build
-    
+
     echo ""
-    print_success "Deployment complete!"
+    print_ok "Deployment complete! Container will auto-restart 24/7."
     echo ""
-    echo "Access the application at:"
     echo "  Admin:  http://localhost:3000"
-    echo "  Agents: http://$(hostname -I | awk '{print $1}' 2>/dev/null || echo '<YOUR_IP>'):3000"
+    echo "  Agents: http://$(get_lan_ip):3000"
     echo ""
-    echo "View logs with: ./docker-deploy.sh logs"
+    echo "  Logs:   ./docker-deploy.sh logs"
+    echo "  Status: ./docker-deploy.sh status"
 }
 
-# Update deployment (pull changes + rebuild)
-deploy_update() {
-    print_header "Updating Deployment"
-    
-    check_docker
-    check_docker_compose
-    
-    # Check if git repository
+# ── COMMAND: update (pull from GitHub + rebuild) ─────────────
+cmd_update() {
+    print_header "Update from GitHub"
+    check_prerequisites
+
     if [ -d ".git" ]; then
-        print_info "Pulling latest changes from repository..."
-        
-        # Stash any local changes
-        if ! git diff-index --quiet HEAD --; then
+        print_info "Pulling latest changes..."
+
+        # Stash local changes if any
+        if ! git diff-index --quiet HEAD -- 2>/dev/null; then
             print_info "Stashing local changes..."
             git stash
         fi
-        
-        # Pull latest changes
-        git pull
-        
-        if [ $? -eq 0 ]; then
-            print_success "Code updated successfully"
+
+        if git pull; then
+            print_ok "Code pulled successfully"
         else
-            print_error "Failed to pull changes"
+            print_err "git pull failed"
             exit 1
         fi
     else
-        print_info "Not a git repository, skipping pull..."
+        print_err "Not a git repository. Clone the repo first."
+        exit 1
     fi
-    
-    print_info "Rebuilding Docker image..."
+
+    print_info "Rebuilding image (no cache)..."
     docker compose build --no-cache
-    
-    print_info "Restarting container with new image..."
+
+    print_info "Restarting with new image..."
     docker compose up -d
-    
+
     print_info "Cleaning up old images..."
     docker image prune -f
-    
+
     echo ""
-    print_success "Update complete!"
-    echo ""
-    echo "Application is running at http://localhost:3000"
-    echo "View logs with: ./docker-deploy.sh logs"
+    print_ok "Update complete! Running at http://localhost:3000"
 }
 
-# Stop deployment
-deploy_stop() {
-    print_header "Stopping Deployment"
-    
-    print_info "Stopping containers..."
+# ── COMMAND: stop ────────────────────────────────────────────
+cmd_stop() {
+    print_header "Stopping Containers"
     docker compose down
-    
-    print_success "Containers stopped"
+    print_ok "Stopped"
 }
 
-# Restart deployment
-deploy_restart() {
-    print_header "Restarting Deployment"
-    
-    print_info "Restarting containers..."
+# ── COMMAND: restart ─────────────────────────────────────────
+cmd_restart() {
+    print_header "Restarting Containers"
     docker compose restart
-    
-    print_success "Containers restarted"
+    print_ok "Restarted"
 }
 
-# View logs
-deploy_logs() {
-    print_header "Container Logs"
-    
+# ── COMMAND: logs ────────────────────────────────────────────
+cmd_logs() {
     docker compose logs -f --tail=100
 }
 
-# Check status
-deploy_status() {
+# ── COMMAND: status ──────────────────────────────────────────
+cmd_status() {
     print_header "Deployment Status"
-    
     docker compose ps
-    
     echo ""
-    if docker compose ps | grep -q "Up"; then
-        print_success "FieldPulse is running"
+
+    if docker compose ps | grep -q "Up\|running"; then
+        print_ok "$APP_NAME is running (auto-restart: always)"
         echo ""
-        echo "Access at: http://localhost:3000"
+        echo "  URL:    http://localhost:3000"
+        echo "  Health: $(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_NAME 2>/dev/null || echo 'N/A')"
+        echo "  Uptime: $(docker inspect --format='{{.State.StartedAt}}' $CONTAINER_NAME 2>/dev/null | cut -d'.' -f1 || echo 'N/A')"
     else
-        print_error "FieldPulse is not running"
-        echo ""
-        echo "Start with: ./docker-deploy.sh start"
+        print_err "$APP_NAME is NOT running"
+        echo "  Start with: ./docker-deploy.sh start"
     fi
 }
 
-# Backup data
-deploy_backup() {
+# ── COMMAND: backup ──────────────────────────────────────────
+cmd_backup() {
     print_header "Backing Up Data"
-    
     BACKUP_FILE="backup-$(date +%Y%m%d-%H%M%S).json"
-    
-    print_info "Creating backup: $BACKUP_FILE"
-    
-    if docker compose ps | grep -q "Up"; then
-        docker cp fieldpulse-server:/app/data/fieldpulse-data.json "./$BACKUP_FILE" 2>/dev/null || \
-        docker cp fieldpulse-server:/app/fieldpulse-data.json "./$BACKUP_FILE"
-        
+
+    if docker compose ps | grep -q "Up\|running"; then
+        docker cp $CONTAINER_NAME:/app/data/fieldpulse-data.json "./$BACKUP_FILE" 2>/dev/null || \
+        docker cp $CONTAINER_NAME:/app/fieldpulse-data.json "./$BACKUP_FILE" 2>/dev/null
+
         if [ -f "$BACKUP_FILE" ]; then
-            print_success "Backup created: $BACKUP_FILE"
+            print_ok "Backup saved: $BACKUP_FILE"
         else
-            print_error "Backup failed - container may not have data yet"
+            print_err "No data file found in container yet"
         fi
     else
-        print_error "Container is not running. Start it first with: ./docker-deploy.sh start"
+        print_err "Container not running. Start first: ./docker-deploy.sh start"
     fi
 }
 
-# Show help
-show_help() {
-    echo "FieldPulse Docker Deployment Script"
+# ── COMMAND: help ────────────────────────────────────────────
+cmd_help() {
     echo ""
-    echo "Usage: ./docker-deploy.sh [command]"
+    echo "  FieldPulse Marketing App - Docker Deploy"
     echo ""
-    echo "Commands:"
-    echo "  start      - Initial deployment (build and start)"
-    echo "  update     - Pull changes from git and rebuild (USE THIS FOR UPDATES)"
-    echo "  stop       - Stop the containers"
-    echo "  restart    - Restart the containers"
-    echo "  logs       - View container logs"
-    echo "  status     - Check deployment status"
-    echo "  backup     - Backup application data"
-    echo "  help       - Show this help message"
+    echo "  Usage: ./docker-deploy.sh <command>"
     echo ""
-    echo "Examples:"
-    echo "  ./docker-deploy.sh start      # First time deployment"
-    echo "  ./docker-deploy.sh update     # Update after git pull"
-    echo "  ./docker-deploy.sh logs       # View logs"
+    echo "  Commands:"
+    echo "    start     First-time build & deploy (auto-restart enabled)"
+    echo "    update    Pull latest from GitHub, rebuild & restart"
+    echo "    stop      Stop containers"
+    echo "    restart   Restart containers"
+    echo "    logs      Tail container logs"
+    echo "    status    Show running status, health & uptime"
+    echo "    backup    Export data file from container"
+    echo "    help      Show this message"
+    echo ""
+    echo "  Typical workflow:"
+    echo "    1. First deploy:   ./docker-deploy.sh start"
+    echo "    2. After git push: ./docker-deploy.sh update"
+    echo ""
 }
 
-# Main script logic
+# ── Main dispatcher ──────────────────────────────────────────
 case "${1:-help}" in
-    start)
-        deploy_initial
-        ;;
-    update)
-        deploy_update
-        ;;
-    stop)
-        deploy_stop
-        ;;
-    restart)
-        deploy_restart
-        ;;
-    logs)
-        deploy_logs
-        ;;
-    status)
-        deploy_status
-        ;;
-    backup)
-        deploy_backup
-        ;;
-    help|--help|-h)
-        show_help
-        ;;
+    start)   cmd_start   ;;
+    update)  cmd_update  ;;
+    stop)    cmd_stop    ;;
+    restart) cmd_restart ;;
+    logs)    cmd_logs    ;;
+    status)  cmd_status  ;;
+    backup)  cmd_backup  ;;
+    help|--help|-h) cmd_help ;;
     *)
-        print_error "Unknown command: $1"
-        echo ""
-        show_help
+        print_err "Unknown command: $1"
+        cmd_help
         exit 1
         ;;
 esac

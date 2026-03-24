@@ -30,20 +30,93 @@ A cross-platform marketing team daily visits tracking app built with **Expo SDK 
 | Icons | @expo/vector-icons (Ionicons) |
 | Date Utils | date-fns v4 |
 
-## Getting Started
+## Getting Started (Development)
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
 npx expo start
-
-# Run on specific platform
-npx expo start --ios
-npx expo start --android
 npx expo start --web
 ```
+
+---
+
+## Docker Deployment (Production - Client Machine)
+
+### Prerequisites
+
+- **Docker** installed ([Install Docker](https://docs.docker.com/get-docker/))
+- **Git** installed
+- Docker set to **start on boot** (for 24/7 auto-restart)
+
+### Step 1: Clone the repository on client machine
+
+```bash
+git clone https://github.com/Anudeep28/Field_Marketing.git
+cd Field_Marketing
+```
+
+### Step 2: First-time deploy
+
+**Linux/macOS:**
+```bash
+chmod +x docker-deploy.sh
+./docker-deploy.sh start
+```
+
+**Windows:**
+```bat
+docker-deploy.bat start
+```
+
+This builds the app, starts the container, and enables **auto-restart** (runs 24/7, survives reboots).
+
+### Step 3: Access the app
+
+| Role | URL |
+|------|-----|
+| Admin | `http://localhost:3000` |
+| Agents | `http://<CLIENT_MACHINE_IP>:3000` |
+
+### Step 4: Update after new changes are pushed to GitHub
+
+When you push code changes to GitHub, run **one command** on the client machine:
+
+**Linux/macOS:**
+```bash
+./docker-deploy.sh update
+```
+
+**Windows:**
+```bat
+docker-deploy.bat update
+```
+
+This automatically: pulls latest code → rebuilds image → restarts container → cleans old images.
+
+### Other commands
+
+```bash
+./docker-deploy.sh status    # Check running status, health, uptime
+./docker-deploy.sh logs      # Tail live container logs
+./docker-deploy.sh restart   # Restart container
+./docker-deploy.sh stop      # Stop container
+./docker-deploy.sh backup    # Export data file from container
+```
+
+### Default Login Credentials
+
+**Admin:** `admin@fieldpulse.in` / `admin123`
+
+**Field Agents (password: `agent123`):**
+- `arjun@fieldpulse.in`
+- `kavitha@fieldpulse.in`
+- `rohit@fieldpulse.in`
+
+### Data Persistence
+
+All data is stored in a Docker volume (`fieldpulse-data`). Data survives container restarts, rebuilds, and image updates. Only removed if you explicitly delete the volume with `docker compose down -v`.
+
+---
 
 ## Project Structure
 
@@ -70,7 +143,11 @@ Marketing_app/
 ├── store/                  # Zustand state management
 ├── types/                  # TypeScript type definitions
 ├── utils/                  # Helper functions
-└── constants/              # Theme, colors, spacing
+├── constants/              # Theme, colors, spacing
+├── Dockerfile              # Multi-stage Docker build
+├── docker-compose.yml      # Production compose config
+├── docker-deploy.sh        # Deploy script (Linux/macOS)
+└── docker-deploy.bat       # Deploy script (Windows)
 ```
 
 ## Data Retention
