@@ -130,7 +130,7 @@ export default function TeamScreen() {
 
     // Register in user database so they can log in
     try {
-      registerUser({
+      await registerUser({
         id: memberId,
         name: newName.trim(),
         email: newEmail.trim(),

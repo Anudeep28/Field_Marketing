@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Visit, Client, AppSettings, FilterOptions, TeamMember } from '../types';
 import { generateId, getNow, getToday, isOlderThanMonths, calculateDuration } from '../utils/helpers';
 import { getSampleClients, getSampleVisits } from '../utils/sampleData';
-import { getAllAgents } from '../utils/userDatabase';
+import { getAllAgents, loadRegisteredUsers } from '../utils/userDatabase';
 import { broadcastChange, pushSyncEvent, syncSet, syncRemove, syncGet } from '../utils/crossTabSync';
 
 export interface AdminNotification {
@@ -28,13 +28,13 @@ const STORAGE_KEYS = {
 // Helper: write to both local AsyncStorage AND the shared server store
 async function sharedSet(key: string, value: string) {
   await AsyncStorage.setItem(key, value);
-  syncSet(key, value);  // fire-and-forget to server
+  await syncSet(key, value);  // await server write so refreshData never reads stale data
 }
 
 // Helper: remove from both local AsyncStorage AND the shared server store
 async function sharedRemove(key: string) {
   await AsyncStorage.removeItem(key);
-  syncRemove(key);  // fire-and-forget to server
+  await syncRemove(key);  // await server write to stay consistent
 }
 
 // Helper: read from the shared server store first, fall back to local AsyncStorage
@@ -476,6 +476,8 @@ export const useStore = create<AppState>((set, get) => ({
   loadData: async () => {
     try {
       set({ isLoading: true });
+      // Hydrate dynamically registered users before anything else
+      await loadRegisteredUsers();
       const [userStr, visitsStr, clientsStr, settingsStr, teamStr] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.USER),
         sharedGet(STORAGE_KEYS.VISITS),

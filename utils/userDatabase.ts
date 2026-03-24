@@ -1,4 +1,6 @@
 import { User, UserRole } from '../types';
+import { syncGet, syncSet } from './crossTabSync';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface RegisteredUser {
   id: string;
@@ -9,9 +11,10 @@ export interface RegisteredUser {
   role: UserRole;
 }
 
-// Pre-registered users for the application
-// In production, this would come from a backend API
-const REGISTERED_USERS: RegisteredUser[] = [
+const USERS_STORAGE_KEY = '@fieldpulse_registered_users';
+
+// Pre-registered (hardcoded) users — always available as a baseline
+const BUILTIN_USERS: RegisteredUser[] = [
   // Admin
   {
     id: 'admin-001',
@@ -64,8 +67,52 @@ const REGISTERED_USERS: RegisteredUser[] = [
   },
 ];
 
+// Dynamically registered users (loaded from persistent storage)
+let dynamicUsers: RegisteredUser[] = [];
+let _loaded = false;
+
+/** All known users = hardcoded + dynamically registered */
+function allUsers(): RegisteredUser[] {
+  return [...BUILTIN_USERS, ...dynamicUsers];
+}
+
+/**
+ * Load dynamically registered users from the shared server data store.
+ * Call this once on app startup (e.g. inside loadData in the store).
+ */
+export async function loadRegisteredUsers(): Promise<void> {
+  try {
+    // Try server first, fall back to local AsyncStorage
+    let raw = await syncGet(USERS_STORAGE_KEY);
+    if (raw === null || raw === undefined) {
+      raw = await AsyncStorage.getItem(USERS_STORAGE_KEY);
+    }
+    if (raw) {
+      const parsed: RegisteredUser[] = JSON.parse(raw);
+      // Merge: only add users whose email isn't already in BUILTIN_USERS
+      dynamicUsers = parsed.filter(
+        (u) => !BUILTIN_USERS.some((b) => b.email.toLowerCase() === u.email.toLowerCase())
+      );
+    }
+    _loaded = true;
+  } catch (e) {
+    console.error('Failed to load registered users:', e);
+  }
+}
+
+/** Persist the dynamic users list to both local storage and server */
+async function persistDynamicUsers(): Promise<void> {
+  const raw = JSON.stringify(dynamicUsers);
+  try {
+    await AsyncStorage.setItem(USERS_STORAGE_KEY, raw);
+    await syncSet(USERS_STORAGE_KEY, raw);
+  } catch (e) {
+    console.error('Failed to persist registered users:', e);
+  }
+}
+
 export function authenticateUser(email: string, password: string): RegisteredUser | null {
-  const user = REGISTERED_USERS.find(
+  const user = allUsers().find(
     (u) => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
   );
   return user || null;
@@ -83,22 +130,23 @@ export function toUser(reg: RegisteredUser): User {
 }
 
 export function getAllAgents(): RegisteredUser[] {
-  return REGISTERED_USERS.filter((u) => u.role === 'field_agent');
+  return allUsers().filter((u) => u.role === 'field_agent');
 }
 
-export function registerUser(user: RegisteredUser): void {
+export async function registerUser(user: RegisteredUser): Promise<void> {
   // Check if email already exists
-  const existing = REGISTERED_USERS.find(
+  const existing = allUsers().find(
     (u) => u.email.toLowerCase() === user.email.toLowerCase()
   );
   if (existing) {
     throw new Error('A user with this email already exists');
   }
-  REGISTERED_USERS.push(user);
+  dynamicUsers.push(user);
+  await persistDynamicUsers();
 }
 
 export function isEmailTaken(email: string): boolean {
-  return REGISTERED_USERS.some(
+  return allUsers().some(
     (u) => u.email.toLowerCase() === email.toLowerCase().trim()
   );
 }

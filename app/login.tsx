@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius, Shadow } from '../constants/theme';
 import Button from '../components/ui/Button';
 import { showAlert } from '../utils/alert';
-import { authenticateUser, toUser } from '../utils/userDatabase';
+import { authenticateUser, toUser, loadRegisteredUsers } from '../utils/userDatabase';
 import { useIsMobile } from '../utils/responsive';
 
 const DEMO_ACCOUNTS = [
@@ -32,6 +32,8 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
+      // Ensure dynamically registered users are loaded from server
+      await loadRegisteredUsers();
       const registeredUser = authenticateUser(email, password);
       if (!registeredUser) {
         setError('Invalid email or password');
