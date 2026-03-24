@@ -29,8 +29,8 @@ WORKDIR /app
 COPY server.js ./
 COPY --from=builder /app/dist ./dist
 
-# Create a directory for persistent data with proper permissions
-RUN mkdir -p /app/data && chown -R node:node /app/data
+# Create data directory and set ownership of entire /app to node user
+RUN mkdir -p /app/data && chown -R node:node /app
 
 ENV NODE_ENV=production
 ENV PORT=3000

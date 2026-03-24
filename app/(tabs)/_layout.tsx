@@ -79,6 +79,9 @@ export default function TabsLayout() {
             );
           })}
         </View>
+        <View style={styles.brandingBar}>
+          <Text style={styles.brandingText}>Powered by Eneru (OPC)</Text>
+        </View>
       </View>
     );
   }
@@ -118,6 +121,11 @@ export default function TabsLayout() {
       {/* Screen Content */}
       <View style={styles.content}>
         <Slot />
+      </View>
+
+      {/* Branding footer */}
+      <View style={styles.brandingBarDesktop}>
+        <Text style={styles.brandingTextDesktop}>Powered by Eneru (OPC)</Text>
       </View>
     </View>
   );
@@ -222,5 +230,33 @@ const styles = StyleSheet.create({
   mobileTabLabelActive: {
     color: Colors.primary,
     fontWeight: '700',
+  },
+
+  // ── Branding ──
+  brandingBar: {
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  brandingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+  brandingBarDesktop: {
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  brandingTextDesktop: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
   },
 });

@@ -151,7 +151,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        <Text style={styles.footer}>Your data is stored locally on your device</Text>
+        <Text style={styles.footer}>Powered by Eneru (OPC)</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -297,8 +297,10 @@ const styles = StyleSheet.create({
   },
   footer: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: FontSize.sm,
+    fontWeight: '600',
     marginTop: Spacing.xxl,
+    letterSpacing: 0.3,
   },
 });
