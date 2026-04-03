@@ -95,7 +95,7 @@ export function calculateDailyStats(visits: Visit[], date: string): DailyStats {
     plannedVisits: dayVisits.filter((v) => v.status === 'planned').length,
     cancelledVisits: dayVisits.filter((v) => v.status === 'cancelled').length,
     totalDuration: dayVisits.reduce((sum, v) => sum + (v.duration || 0), 0),
-    newLeads: dayVisits.filter((v) => v.purpose === 'new_lead').length,
+    newLeads: dayVisits.filter((v) => v.purpose === 'new_enquiry').length,
   };
 }
 
@@ -144,18 +144,42 @@ export function getGreeting(): string {
   return 'Good Evening';
 }
 
+export function generateCSVFromAttendance(
+  officeHistory: Record<string, string[]>,
+  teamMembers: { id: string; name: string }[]
+): string {
+  const nameMap: Record<string, string> = {};
+  teamMembers.forEach((m) => { nameMap[m.id] = m.name; });
+
+  const headers = ['Agent Name', 'Date', 'Work Location'];
+  const rows: string[][] = [];
+
+  Object.entries(officeHistory).forEach(([userId, dates]) => {
+    const name = nameMap[userId] || userId;
+    dates.forEach((date) => {
+      rows.push([`"${name}"`, date, 'Office']);
+    });
+  });
+
+  rows.sort((a, b) => {
+    const dateCmp = b[1].localeCompare(a[1]);
+    return dateCmp !== 0 ? dateCmp : a[0].localeCompare(b[0]);
+  });
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+
 export function generateCSVFromVisits(visits: Visit[]): string {
   const headers = [
-    'Date', 'Client', 'Purpose', 'Status', 'Check-In Time', 'Check-Out Time',
-    'Duration (min)', 'Notes', 'Outcome', 'Check-In Address'
+    'Planned Date', 'Client', 'Purpose', 'Status',
+    'Completed Date', 'Duration (min)', 'Notes', 'Outcome', 'Check-In Address'
   ];
   const rows = visits.map((v) => [
     v.date,
     `"${v.clientName}"`,
     v.purpose,
     v.status,
-    v.checkInTime ? formatTime(v.checkInTime) : '',
-    v.checkOutTime ? formatTime(v.checkOutTime) : '',
+    v.checkOutTime ? v.checkOutTime.substring(0, 10) : '',
     String(v.duration || 0),
     `"${v.notes.replace(/"/g, '""')}"`,
     `"${(v.outcome || '').replace(/"/g, '""')}"`,

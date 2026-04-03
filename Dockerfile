@@ -25,12 +25,15 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Only need the server and the built static files
+# Install only the production server dependency (pg)
+RUN echo '{"name":"fieldpulse-server","version":"1.0.0","dependencies":{"pg":"^8.13.0"}}' > package.json \
+ && npm install --omit=dev
+
+# Copy the server and the built static files
 COPY server.js ./
 COPY --from=builder /app/dist ./dist
 
-# Create data directory and set ownership of entire /app to node user
-RUN mkdir -p /app/data && chown -R node:node /app
+RUN chown -R node:node /app
 
 ENV NODE_ENV=production
 ENV PORT=3000

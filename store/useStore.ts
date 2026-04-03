@@ -23,6 +23,8 @@ const STORAGE_KEYS = {
   CLIENTS: '@fieldpulse_clients',
   SETTINGS: '@fieldpulse_settings',
   TEAM: '@fieldpulse_team',
+  OFFICE_STATUS: '@fieldpulse_office_status',
+  OFFICE_HISTORY: '@fieldpulse_office_history',
 };
 
 // Helper: write to both local AsyncStorage AND the shared server store
@@ -71,6 +73,8 @@ interface AppState {
   // UI State
   isLoading: boolean;
   activeVisit: Visit | null;
+  officeToday: Record<string, string>; // userId → date string (today = WFO)
+  officeHistory: Record<string, string[]>; // userId → sorted array of WFO dates
 
   // Admin Notifications
   notifications: AdminNotification[];
@@ -110,6 +114,8 @@ interface AppState {
 
   // Agent actions
   pickVisit: (visitId: string) => Promise<void>;
+  setWorkingFromOffice: (isOffice: boolean) => Promise<void>;
+  getOfficeHistory: () => Record<string, string[]>;
 
   // Live refresh
   refreshData: () => Promise<void>;
@@ -140,6 +146,8 @@ export const useStore = create<AppState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   isLoading: true,
   activeVisit: null,
+  officeToday: {},
+  officeHistory: {},
   notifications: [],
 
   addNotification: (notification) => {
@@ -431,10 +439,11 @@ export const useStore = create<AppState>((set, get) => ({
   // ── Live refresh (re-read from shared server store) ────────────
   refreshData: async () => {
     try {
-      const [visitsStr, clientsStr, teamStr] = await Promise.all([
+      const [visitsStr, clientsStr, teamStr, officeStr] = await Promise.all([
         sharedGet(STORAGE_KEYS.VISITS),
         sharedGet(STORAGE_KEYS.CLIENTS),
         sharedGet(STORAGE_KEYS.TEAM),
+        sharedGet(STORAGE_KEYS.OFFICE_STATUS),
       ]);
       const current = get();
       
@@ -442,12 +451,15 @@ export const useStore = create<AppState>((set, get) => ({
       const visits: Visit[] = visitsStr ? JSON.parse(visitsStr) : current.visits;
       const clients = clientsStr ? JSON.parse(clientsStr) : current.clients;
       const teamMembers = teamStr ? JSON.parse(teamStr) : current.teamMembers;
+      const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : current.officeToday;
+      const officeHistoryStr = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
+      const officeHistory: Record<string, string[]> = officeHistoryStr ? JSON.parse(officeHistoryStr) : current.officeHistory;
       const currentUser = current.currentUser;
       const activeVisit = currentUser
         ? visits.find((v: Visit) => v.status === 'in_progress' && v.userId === currentUser.id) || null
         : null;
 
-      set({ visits, clients, teamMembers, activeVisit });
+      set({ visits, clients, teamMembers, activeVisit, officeToday, officeHistory });
       
       // If we have in-memory data but server is empty, push data back to server
       if (!visitsStr && visits.length > 0) {
@@ -463,6 +475,40 @@ export const useStore = create<AppState>((set, get) => ({
       console.error('Failed to refresh data:', error);
     }
   },
+
+  setWorkingFromOffice: async (isOffice: boolean) => {
+    const { currentUser, officeToday, officeHistory } = get();
+    if (!currentUser) return;
+    const today = getToday();
+
+    // Update today's live status
+    const updatedToday = { ...officeToday };
+    if (isOffice) {
+      updatedToday[currentUser.id] = today;
+    } else {
+      delete updatedToday[currentUser.id];
+    }
+
+    // Update persistent history log
+    const userHistory: string[] = [...(officeHistory[currentUser.id] || [])];
+    if (isOffice && !userHistory.includes(today)) {
+      userHistory.push(today);
+      userHistory.sort();
+    } else if (!isOffice) {
+      const idx = userHistory.indexOf(today);
+      if (idx !== -1) userHistory.splice(idx, 1);
+    }
+    const updatedHistory = { ...officeHistory, [currentUser.id]: userHistory };
+
+    await Promise.all([
+      sharedSet(STORAGE_KEYS.OFFICE_STATUS, JSON.stringify(updatedToday)),
+      sharedSet(STORAGE_KEYS.OFFICE_HISTORY, JSON.stringify(updatedHistory)),
+    ]);
+    broadcastChange([STORAGE_KEYS.OFFICE_STATUS, STORAGE_KEYS.OFFICE_HISTORY]);
+    set({ officeToday: updatedToday, officeHistory: updatedHistory });
+  },
+
+  getOfficeHistory: () => get().officeHistory,
 
   // ── Settings ──────────────────────────────────────
   updateSettings: async (updates) => {
@@ -491,6 +537,10 @@ export const useStore = create<AppState>((set, get) => ({
       const clients = clientsStr ? JSON.parse(clientsStr) : [];
       const settings = settingsStr ? { ...DEFAULT_SETTINGS, ...JSON.parse(settingsStr) } : DEFAULT_SETTINGS;
       const teamMembers = teamStr ? JSON.parse(teamStr) : [];
+      const officeStr = await sharedGet(STORAGE_KEYS.OFFICE_STATUS);
+      const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : {};
+      const officeHistoryStr2 = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
+      const officeHistory: Record<string, string[]> = officeHistoryStr2 ? JSON.parse(officeHistoryStr2) : {};
 
       // Find active visit for the current user only
       const activeVisit = currentUser
@@ -505,6 +555,8 @@ export const useStore = create<AppState>((set, get) => ({
         settings,
         teamMembers,
         activeVisit,
+        officeToday,
+        officeHistory,
         isLoading: false,
       });
       

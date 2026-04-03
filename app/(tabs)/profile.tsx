@@ -60,7 +60,9 @@ export default function ProfileScreen() {
 
   const menuItems = [
     { icon: 'settings-outline' as const, label: 'Settings', onPress: () => router.push('/settings') },
-    ...(isAgent ? [] : [{ icon: 'download-outline' as const, label: 'Export Data', onPress: () => router.push('/export') }]),
+    isAgent
+      ? { icon: 'download-outline' as const, label: 'Download My Data', onPress: () => router.push('/export') }
+      : { icon: 'download-outline' as const, label: 'Export Data', onPress: () => router.push('/export') },
     ...(isAgent ? [] : [{ icon: 'shield-checkmark-outline' as const, label: 'Data Retention: 6 months', onPress: () => router.push('/settings') }]),
     { icon: 'information-circle-outline' as const, label: 'About FieldPulse v1.0', onPress: () => {} },
   ];

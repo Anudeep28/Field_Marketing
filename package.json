@@ -16,6 +16,7 @@
     "docker:restart": "docker compose restart"
   },
   "dependencies": {
+    "pg": "^8.13.0",
     "@expo/vector-icons": "~14.0.4",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-navigation/bottom-tabs": "^7.0.0",

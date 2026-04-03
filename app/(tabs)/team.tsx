@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius, Shadow } from '../../constants/theme';
 import Card from '../../components/ui/Card';
@@ -188,6 +189,20 @@ export default function TeamScreen() {
   };
 
   return (
+    <View style={{ flex: 1 }}>
+      {/* Page Header */}
+      <View style={[styles.pageHeader, { paddingHorizontal: sp.lg, paddingVertical: sp.md }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(tabs)' as any)} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={22} color={Colors.textOnPrimary} />
+          <Text style={[styles.backBtnText, { fontSize: fs.sm }]}>Dashboard</Text>
+        </TouchableOpacity>
+        <Text style={[styles.pageTitle, { fontSize: fs.lg }]}>Manage Team</Text>
+        <TouchableOpacity style={styles.headerAddBtn} onPress={() => setShowAddModal(true)} activeOpacity={0.7}>
+          <Ionicons name="person-add" size={20} color={Colors.textOnPrimary} />
+          <Text style={[styles.headerAddBtnText, { fontSize: fs.sm }]}>Add Member</Text>
+        </TouchableOpacity>
+      </View>
+
     <ScrollView style={[styles.container, { padding: sp.lg }]} showsVerticalScrollIndicator={false}>
       {/* Team Overview */}
       <View style={[styles.overviewGrid, { gap: sp.sm, marginBottom: sp.lg }]}>
@@ -324,11 +339,6 @@ export default function TeamScreen() {
         })
       )}
 
-      {/* FAB */}
-      <TouchableOpacity style={[styles.fab, isMobile && styles.fabMobile]} onPress={() => setShowAddModal(true)} activeOpacity={0.8}>
-        <Ionicons name="person-add" size={24} color={Colors.textOnPrimary} />
-      </TouchableOpacity>
-
       {/* Add Member Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -411,11 +421,59 @@ export default function TeamScreen() {
 
       <View style={{ height: isMobile ? 100 : 80 }} />
     </ScrollView>
+
+    {/* FAB - outside ScrollView so it's always visible */}
+    <TouchableOpacity style={[styles.fab, isMobile && styles.fabMobile]} onPress={() => setShowAddModal(true)} activeOpacity={0.8}>
+      <Ionicons name="person-add" size={24} color={Colors.textOnPrimary} />
+    </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: Spacing.lg },
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    ...Shadow.sm,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  backBtnText: {
+    color: Colors.textOnPrimary,
+    fontWeight: '600',
+  },
+  pageTitle: {
+    fontWeight: '800',
+    color: Colors.textOnPrimary,
+    letterSpacing: -0.3,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  headerAddBtnText: {
+    color: Colors.textOnPrimary,
+    fontWeight: '700',
+  },
   overviewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

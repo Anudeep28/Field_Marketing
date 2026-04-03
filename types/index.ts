@@ -12,7 +12,7 @@ export interface User {
 }
 
 export type VisitStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled' | 'rescheduled';
-export type VisitPurpose = 'new_lead' | 'follow_up' | 'demo' | 'negotiation' | 'closure' | 'support' | 'other';
+export type VisitPurpose = 'collection' | 'new_enquiry' | 'trial' | 'follow_up' | 'other';
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
 
 export interface GeoLocation {

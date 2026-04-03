@@ -11,12 +11,10 @@ import { VisitPurpose } from '../../types';
 import { useIsMobile } from '../../utils/responsive';
 
 const PURPOSES: { value: VisitPurpose; label: string }[] = [
-  { value: 'new_lead', label: 'New Lead' },
-  { value: 'follow_up', label: 'Follow Up' },
-  { value: 'demo', label: 'Product Demo' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'closure', label: 'Deal Closure' },
-  { value: 'support', label: 'Support' },
+  { value: 'collection', label: 'Collection' },
+  { value: 'new_enquiry', label: 'New Enquiry' },
+  { value: 'trial', label: 'Trial' },
+  { value: 'follow_up', label: 'Follow-up' },
   { value: 'other', label: 'Other' },
 ];
 

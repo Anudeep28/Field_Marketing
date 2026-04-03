@@ -3,7 +3,7 @@
  *
  * A lightweight Node.js server that:
  *  1. Serves the static Expo web build from ./dist
- *  2. Provides a shared JSON data store (replaces per-origin localStorage)
+ *  2. Provides a shared PostgreSQL-backed data store (replaces per-origin localStorage)
  *  3. Provides Server-Sent Events (SSE) for real-time push to admin dashboard
  *  4. Accepts POST /api/events from field agents to broadcast via SSE
  *
@@ -12,45 +12,57 @@
  *   → serves on http://0.0.0.0:3000
  *   → admin opens http://localhost:3000
  *   → agents open  http://<LAN_IP>:3000
+ *
+ * Environment variables:
+ *   DATABASE_URL  — PostgreSQL connection string (required)
+ *   PORT          — HTTP port (default: 3000)
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
 
-// ── Persistent JSON file data store ─────────────────────────────────────
-// This replaces localStorage so all clients (any origin) share the same data.
-const DATA_DIR = process.env.DATA_DIR || __dirname;
-const DATA_FILE = path.join(DATA_DIR, 'fieldpulse-data.json');
+// ── PostgreSQL data store ────────────────────────────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('sslmode=disable')
+    ? false
+    : process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
+});
 
-// Load existing data from file on startup
-let dataStore = {};
-try {
-  if (fs.existsSync(DATA_FILE)) {
-    const fileData = fs.readFileSync(DATA_FILE, 'utf8');
-    dataStore = JSON.parse(fileData);
-    console.log('📁 Loaded existing data from', DATA_FILE);
-  }
-} catch (error) {
-  console.warn('⚠️  Failed to load data file, starting with empty store:', error.message);
-  dataStore = {};
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS kv_store (
+      key         TEXT PRIMARY KEY,
+      value       TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  console.log('�️  PostgreSQL kv_store table ready');
 }
 
-// Save data to file (debounced to avoid excessive writes)
-let saveTimeout = null;
-function saveDataToFile() {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    try {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(dataStore, null, 2));
-      console.log('💾 Data saved to', DATA_FILE);
-    } catch (error) {
-      console.error('❌ Failed to save data:', error.message);
-    }
-  }, 1000); // Save 1 second after last change
+async function dbGet(key) {
+  const { rows } = await pool.query('SELECT value FROM kv_store WHERE key = $1', [key]);
+  return rows.length > 0 ? rows[0].value : null;
+}
+
+async function dbSet(key, value) {
+  await pool.query(
+    `INSERT INTO kv_store (key, value, updated_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+    [key, value]
+  );
+}
+
+async function dbDelete(key) {
+  await pool.query('DELETE FROM kv_store WHERE key = $1', [key]);
 }
 
 // ── SSE clients ─────────────────────────────────────────────────────
@@ -164,9 +176,15 @@ const server = http.createServer(async (req, res) => {
   // ══════════════════════════════════════════════════════════════════
   if (pathname.startsWith('/api/data/') && req.method === 'GET') {
     const key = decodeURIComponent(pathname.slice('/api/data/'.length));
-    const value = dataStore[key];
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ key, value: value !== undefined ? value : null }));
+    try {
+      const value = await dbGet(key);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ key, value: value !== null ? value : null }));
+    } catch (err) {
+      console.error('DB GET error:', err.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Database error' }));
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -177,13 +195,17 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     try {
       const { value } = JSON.parse(body);
-      dataStore[key] = value;
-      saveDataToFile(); // Persist changes to disk
+      await dbSet(key, value);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: true }));
-    } catch {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Invalid JSON' }));
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+      console.error('DB SET error:', err.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Database error' }));
     }
   }
 
@@ -192,10 +214,15 @@ const server = http.createServer(async (req, res) => {
   // ══════════════════════════════════════════════════════════════════
   if (pathname.startsWith('/api/data/') && req.method === 'DELETE') {
     const key = decodeURIComponent(pathname.slice('/api/data/'.length));
-    delete dataStore[key];
-    saveDataToFile(); // Persist changes to disk
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true }));
+    try {
+      await dbDelete(key);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error('DB DELETE error:', err.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Database error' }));
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -224,24 +251,36 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  const interfaces = require('os').networkInterfaces();
-  let lanIP = 'unknown';
-  for (const iface of Object.values(interfaces)) {
-    for (const cfg of iface) {
-      if (cfg.family === 'IPv4' && !cfg.internal) { lanIP = cfg.address; break; }
-    }
+async function start() {
+  try {
+    await initDb();
+  } catch (err) {
+    console.error('❌ Failed to connect to PostgreSQL:', err.message);
+    console.error('   Make sure DATABASE_URL is set and the database is reachable.');
+    process.exit(1);
   }
-  console.log('');
-  console.log('  ┌─────────────────────────────────────────────┐');
-  console.log('  │  FieldPulse Sync Server running!             │');
-  console.log('  │                                              │');
-  console.log(`  │  Admin:  http://localhost:${PORT}              │`);
-  console.log(`  │  Agents: http://${lanIP}:${PORT}     │`);
-  console.log('  │                                              │');
-  console.log('  │  SSE:    /api/events  (GET = stream)         │');
-  console.log('  │  Events: /api/events  (POST = push)          │');
-  console.log('  │  Data:   /api/data/:key (GET/POST/DELETE)    │');
-  console.log('  └─────────────────────────────────────────────┘');
-  console.log('');
-});
+
+  server.listen(PORT, '0.0.0.0', () => {
+    const interfaces = require('os').networkInterfaces();
+    let lanIP = 'unknown';
+    for (const iface of Object.values(interfaces)) {
+      for (const cfg of iface) {
+        if (cfg.family === 'IPv4' && !cfg.internal) { lanIP = cfg.address; break; }
+      }
+    }
+    console.log('');
+    console.log('  ┌─────────────────────────────────────────────┐');
+    console.log('  │  FieldPulse Sync Server running!             │');
+    console.log('  │                                              │');
+    console.log(`  │  Admin:  http://localhost:${PORT}              │`);
+    console.log(`  │  Agents: http://${lanIP}:${PORT}     │`);
+    console.log('  │                                              │');
+    console.log('  │  SSE:    /api/events  (GET = stream)         │');
+    console.log('  │  Events: /api/events  (POST = push)          │');
+    console.log('  │  Data:   /api/data/:key (GET/POST/DELETE)    │');
+    console.log('  └─────────────────────────────────────────────┘');
+    console.log('');
+  });
+}
+
+start();

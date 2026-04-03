@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect, useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useMemo, useEffect, useCallback, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useStore, AdminNotification } from '../../store/useStore';
@@ -28,9 +28,23 @@ export default function DashboardScreen() {
   const notifications = useStore((s) => s.notifications);
   const markNotificationRead = useStore((s) => s.markNotificationRead);
   const logout = useStore((s) => s.logout);
+  const officeToday = useStore((s) => s.officeToday);
+  const setWorkingFromOffice = useStore((s) => s.setWorkingFromOffice);
 
   const isAgent = currentUser?.role === 'field_agent';
   const isAdmin = currentUser?.role === 'admin';
+  const today = getToday();
+  const isWorkingFromOffice = isAgent && !!currentUser && officeToday[currentUser.id] === today;
+
+  const toggleAnim = useRef(new Animated.Value(isWorkingFromOffice ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(toggleAnim, {
+      toValue: isWorkingFromOffice ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 4,
+    }).start();
+  }, [isWorkingFromOffice]);
 
   // Track dismissed toasts so they don't reappear
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -82,7 +96,6 @@ export default function DashboardScreen() {
     };
   }, []);
 
-  const today = getToday();
   const weekRange = getWeekRange();
   const monthRange = getMonthRange();
 
@@ -165,6 +178,7 @@ export default function DashboardScreen() {
           todayTotal: Math.max(totalPickedToday, totalDoneToday),
           todayDone: totalDoneToday,
           isInField: !!activeV,
+          isInOffice: !activeV && officeToday[m.id] === today,
           activeClient: activeV?.clientName,
         };
       })
@@ -325,6 +339,41 @@ export default function DashboardScreen() {
       {isAdmin && (
         <>
           <Text style={[styles.sectionTitle, { fontSize: fs.lg, paddingHorizontal: sp.lg, marginBottom: sp.md }]}>Organisation Overview</Text>
+
+          {/* Quick Actions */}
+          <View style={[styles.quickActions, { paddingHorizontal: sp.lg, paddingVertical: sp.xl, gap: sp.md }]}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/visit/new')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors.primaryLight }]}>
+                <Ionicons name="add-circle" size={28} color={Colors.textOnPrimary} />
+              </View>
+              <Text style={styles.quickActionText}>New Visit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/client/new')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary }]}>
+                <Ionicons name="person-add" size={24} color={Colors.textOnPrimary} />
+              </View>
+              <Text style={styles.quickActionText}>Add Client</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.replace('/(tabs)/team' as any)}>
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors.success }]}>
+                <Ionicons name="people" size={24} color={Colors.textOnPrimary} />
+              </View>
+              <Text style={styles.quickActionText}>Team</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/export')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>
+                <Ionicons name="download" size={24} color={Colors.textOnPrimary} />
+              </View>
+              <Text style={styles.quickActionText}>Export</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/calendar')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>
+                <Ionicons name="calendar" size={24} color={Colors.textOnPrimary} />
+              </View>
+              <Text style={styles.quickActionText}>Calendar</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={[styles.kpiRow, { paddingHorizontal: sp.lg, gap: sp.sm, marginBottom: sp.xl, flexWrap: 'wrap' }]}>
             <Card style={styles.kpiCard}>
               <Ionicons name="people" size={20} color={Colors.primary} />
@@ -364,14 +413,16 @@ export default function DashboardScreen() {
                     <View style={styles.agentAvatar}>
                       <Text style={styles.agentAvatarText}>{agent.initial}</Text>
                     </View>
-                    {agent.isInField && (
-                      <View style={styles.fieldDot} />
-                    )}
+                    {agent.isInField && <View style={styles.fieldDot} />}
+                    {agent.isInOffice && !agent.isInField && <View style={styles.officeDot} />}
                   </View>
                   <Text style={styles.agentName} numberOfLines={1}>{agent.name}</Text>
                   <Text style={styles.agentStat}>{agent.todayDone}/{agent.todayTotal} today</Text>
                   {agent.isInField && agent.activeClient && (
                     <Text style={styles.agentActive} numberOfLines={1}>@ {agent.activeClient}</Text>
+                  )}
+                  {agent.isInOffice && !agent.isInField && (
+                    <Text style={[styles.agentActive, { color: Colors.secondary }]} numberOfLines={1}>In Office</Text>
                   )}
                 </Card>
               ))}
@@ -406,6 +457,56 @@ export default function DashboardScreen() {
         </>
       )}
 
+      {/* Working From Office Banner (agent only) */}
+      {isAgent && (
+        <TouchableOpacity
+          style={[
+            styles.wfoBanner,
+            isWorkingFromOffice ? styles.wfoBannerActive : styles.wfoBannerInactive,
+            { marginHorizontal: sp.lg, marginBottom: sp.lg },
+          ]}
+          onPress={() => setWorkingFromOffice(!isWorkingFromOffice)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.wfoIconWrap}>
+            <Ionicons
+              name={isWorkingFromOffice ? 'business' : 'business-outline'}
+              size={28}
+              color={isWorkingFromOffice ? Colors.textOnPrimary : Colors.primary}
+            />
+          </View>
+          <View style={styles.wfoContent}>
+            <Text style={[styles.wfoTitle, { fontSize: fs.md, color: isWorkingFromOffice ? Colors.textOnPrimary : Colors.text }]}>
+              {isWorkingFromOffice ? 'Working from Office Today' : 'Working from Field Today'}
+            </Text>
+            <Text style={[styles.wfoSubtitle, { fontSize: fs.xs, color: isWorkingFromOffice ? 'rgba(255,255,255,0.8)' : Colors.textSecondary }]}>
+              {isWorkingFromOffice ? 'Tap to switch to field mode' : 'Tap to mark yourself as working from office'}
+            </Text>
+          </View>
+          <View style={styles.wfoToggle}>
+            <View style={[
+              styles.wfoTrack,
+              { backgroundColor: isWorkingFromOffice ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.12)' },
+            ]}>
+              <Animated.View
+                style={[
+                  styles.wfoKnob,
+                  {
+                    backgroundColor: isWorkingFromOffice ? Colors.secondary : Colors.surface,
+                    transform: [{
+                      translateX: toggleAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [2, 24],
+                      }),
+                    }],
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
+
       {/* Active Visit Banner (own) */}
       {activeVisit && (
         <TouchableOpacity onPress={() => router.push(`/visit/${activeVisit.id}`)}>
@@ -422,52 +523,23 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Quick Actions */}
-      <View style={[styles.quickActions, { paddingHorizontal: sp.lg, paddingVertical: sp.xl, gap: sp.md }]}>
-        {isAdmin ? (
-          <>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/visit/new')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: Colors.primaryLight }]}>
-                <Ionicons name="add-circle" size={28} color={Colors.textOnPrimary} />
-              </View>
-              <Text style={styles.quickActionText}>New Visit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/client/new')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary }]}>
-                <Ionicons name="person-add" size={24} color={Colors.textOnPrimary} />
-              </View>
-              <Text style={styles.quickActionText}>Add Client</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.replace('/(tabs)/team' as any)}>
-              <View style={[styles.quickActionIcon, { backgroundColor: Colors.success }]}>
-                <Ionicons name="people" size={24} color={Colors.textOnPrimary} />
-              </View>
-              <Text style={styles.quickActionText}>Team</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/export')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>
-                <Ionicons name="download" size={24} color={Colors.textOnPrimary} />
-              </View>
-              <Text style={styles.quickActionText}>Export</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.replace('/(tabs)/visits' as any)}>
-              <View style={[styles.quickActionIcon, { backgroundColor: Colors.primaryLight }]}>
-                <Ionicons name="location" size={28} color={Colors.textOnPrimary} />
-              </View>
-              <Text style={styles.quickActionText}>My Visits</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/calendar')}>
-          <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>
-            <Ionicons name="calendar" size={24} color={Colors.textOnPrimary} />
-          </View>
-          <Text style={styles.quickActionText}>Calendar</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Quick Actions - agent only (admin quick actions are in the org overview section above) */}
+      {!isAdmin && (
+        <View style={[styles.quickActions, { paddingHorizontal: sp.lg, paddingVertical: sp.xl, gap: sp.md }]}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.replace('/(tabs)/visits' as any)}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="location" size={28} color={Colors.textOnPrimary} />
+            </View>
+            <Text style={styles.quickActionText}>My Visits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/calendar')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>
+              <Ionicons name="calendar" size={24} color={Colors.textOnPrimary} />
+            </View>
+            <Text style={styles.quickActionText}>Calendar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ─── AGENT: Personal KPIs ─── */}
       {isAgent && (
@@ -1084,5 +1156,101 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     marginTop: 1,
+  },
+  officeDot: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.secondary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
+  wfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    ...Shadow.md,
+  },
+  wfoBannerInactive: {
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  wfoBannerActive: {
+    backgroundColor: Colors.secondary,
+    borderWidth: 0,
+  },
+  wfoIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wfoContent: {
+    flex: 1,
+  },
+  wfoTitle: {
+    fontWeight: '700',
+  },
+  wfoSubtitle: {
+    marginTop: 2,
+  },
+  wfoToggle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wfoTrack: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+  },
+  wfoKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  exportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.success,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadow.md,
+  },
+  exportCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  exportCardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportCardTitle: {
+    fontWeight: '700',
+    color: Colors.textOnPrimary,
+  },
+  exportCardSub: {
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
 });

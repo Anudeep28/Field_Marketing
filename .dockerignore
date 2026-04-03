@@ -25,6 +25,9 @@ LICENSE
 # Deploy scripts (not needed inside container)
 docker-deploy.sh
 docker-deploy.bat
+hostinger-setup.sh
+fly.toml
+.env.example
 
 # Existing data file (will use mounted volume)
 fieldpulse-data.json

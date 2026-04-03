@@ -124,12 +124,10 @@ export const LeadStatusColors: Record<string, { bg: string; text: string }> = {
 };
 
 export const PurposeLabels: Record<string, string> = {
-  new_lead: 'New Lead',
-  follow_up: 'Follow Up',
-  demo: 'Product Demo',
-  negotiation: 'Negotiation',
-  closure: 'Deal Closure',
-  support: 'Support',
+  collection: 'Collection',
+  new_enquiry: 'New Enquiry',
+  trial: 'Trial',
+  follow_up: 'Follow-up',
   other: 'Other',
 };
 

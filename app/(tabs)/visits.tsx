@@ -131,23 +131,25 @@ export default function VisitsScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        horizontal
-        data={STATUS_FILTERS}
-        keyExtractor={(item) => item.value}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.filterContainer, { paddingHorizontal: sp.lg, paddingVertical: sp.md, gap: sp.sm }]}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.filterChip, { paddingHorizontal: sp.lg, paddingVertical: sp.sm }, statusFilter === item.value && styles.filterChipActive]}
-            onPress={() => setStatusFilter(item.value)}
-          >
-            <Text style={[styles.filterChipText, { fontSize: fs.sm }, statusFilter === item.value && styles.filterChipTextActive]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      <View style={styles.filterRow}>
+        <FlatList
+          horizontal
+          data={STATUS_FILTERS}
+          keyExtractor={(item) => item.value}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.filterContainer, { paddingHorizontal: sp.lg, paddingVertical: sp.md, gap: sp.sm }]}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.filterChip, { paddingHorizontal: sp.lg, paddingVertical: sp.sm }, statusFilter === item.value && styles.filterChipActive]}
+              onPress={() => setStatusFilter(item.value)}
+            >
+              <Text style={[styles.filterChipText, { fontSize: fs.sm }, statusFilter === item.value && styles.filterChipTextActive]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
 
       <View style={[styles.resultsBar, { paddingHorizontal: sp.lg }]}>
         <Text style={[styles.resultsCount, { fontSize: fs.sm }]}>{filteredVisits.length} visit{filteredVisits.length !== 1 ? 's' : ''}</Text>
@@ -210,6 +212,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Shadow.sm,
   },
+  filterRow: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
   filterContainer: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
@@ -219,9 +226,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: '#E2E8F0',
+    borderWidth: 2,
+    borderColor: '#475569',
   },
   filterChipActive: {
     backgroundColor: Colors.primary,
@@ -229,8 +236,8 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.textSecondary,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   filterChipTextActive: {
     color: Colors.textOnPrimary,
