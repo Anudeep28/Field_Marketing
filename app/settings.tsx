@@ -1,37 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useStore } from '../store/useStore';
-import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius, Shadow } from '../constants/theme';
+import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius } from '../constants/theme';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { showAlert } from '../utils/alert';
 import { useIsMobile } from '../utils/responsive';
 
 export default function SettingsScreen() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
-  const resetAllData = useStore((s) => s.resetAllData);
-  const seedSampleData = useStore((s) => s.seedSampleData);
   const currentUser = useStore((s) => s.currentUser);
-  
-  const isAgent = currentUser?.role === 'field_agent';
 
-  const handleResetData = () => {
-    showAlert('Reset Demo Data', 'This will delete all visits, clients, and team data, then re-seed fresh demo data. Continue?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reset',
-        style: 'destructive',
-        onPress: async () => {
-          await resetAllData();
-          if (currentUser) {
-            await seedSampleData(currentUser.id);
-          }
-          showAlert('Done', 'Demo data has been reset successfully.');
-        },
-      },
-    ]);
-  };
+  const isAgent = currentUser?.role === 'field_agent';
 
   const isMobile = useIsMobile();
   const sp = isMobile ? MobileSpacing : Spacing;
@@ -130,20 +109,6 @@ export default function SettingsScreen() {
             thumbColor={settings.enableOfflineMode ? Colors.primary : Colors.textTertiary}
           />
         </View>
-      </Card>
-
-      <Card>
-        <Text style={styles.sectionTitle}>Data Management</Text>
-        <Text style={styles.settingDesc}>
-          Reset all visits, clients, and team data back to the initial demo state.
-        </Text>
-        <Button
-          title="Reset Demo Data"
-          variant="danger"
-          size="md"
-          onPress={handleResetData}
-          style={{ marginTop: Spacing.md }}
-        />
       </Card>
 
       <Card variant="filled">

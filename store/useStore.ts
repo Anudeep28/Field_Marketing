@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Visit, Client, AppSettings, FilterOptions, TeamMember } from '../types';
 import { generateId, getNow, getToday, isOlderThanMonths, calculateDuration } from '../utils/helpers';
-import { getSampleClients, getSampleVisits } from '../utils/sampleData';
-import { getAllAgents, loadRegisteredUsers } from '../utils/userDatabase';
+import { loadRegisteredUsers } from '../utils/userDatabase';
 import { broadcastChange, pushSyncEvent, syncSet, syncRemove, syncGet } from '../utils/crossTabSync';
 
 export interface AdminNotification {
@@ -596,58 +595,10 @@ export const useStore = create<AppState>((set, get) => ({
     return JSON.stringify({ visits, clients, exportedAt: getNow() }, null, 2);
   },
 
+  // Demo data has been removed; seeding is now a no-op.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   seedSampleData: async (_userId) => {
-    // Universal seed: create shared data.
-    // Admin creates clients and plans visits (unassigned).
-    // Field agents pick visits from the pool.
-    const allAgents = getAllAgents();
-
-    // Create team members from all registered agents
-    const teamMembers: TeamMember[] = allAgents.map((a) => ({
-      id: a.id,
-      name: a.name,
-      email: a.email,
-      phone: a.phone,
-      role: a.role,
-      status: 'active' as const,
-      createdAt: getNow(),
-    }));
-
-    const sampleClients = getSampleClients();
-    const sampleVisits = getSampleVisits(sampleClients);
-
-    // Clients are created by admin — assignedTo is 'admin-001'
-    sampleClients.forEach((c) => {
-      c.assignedTo = 'admin-001';
-    });
-
-    // Some past visits assigned to agents (simulating completed work),
-    // future/planned visits left unassigned for agents to pick
-    const agentIds = allAgents.map((a) => a.id);
-    const nameMap: Record<string, string> = {};
-    allAgents.forEach((a) => { nameMap[a.id] = a.name; });
-
-    sampleVisits.forEach((v, i) => {
-      v.assignedBy = 'admin-001';
-      if (v.status === 'completed' || v.status === 'in_progress') {
-        // Completed/active visits are assigned to agents
-        const agentId = agentIds[i % agentIds.length];
-        v.userId = agentId;
-        v.assignedToName = nameMap[agentId] || 'Agent';
-      } else {
-        // Planned visits are unassigned — available for any agent
-        v.userId = '';
-        v.assignedToName = '';
-      }
-    });
-
-    await Promise.all([
-      sharedSet(STORAGE_KEYS.CLIENTS, JSON.stringify(sampleClients)),
-      sharedSet(STORAGE_KEYS.VISITS, JSON.stringify(sampleVisits)),
-      sharedSet(STORAGE_KEYS.TEAM, JSON.stringify(teamMembers)),
-    ]);
-    broadcastChange([STORAGE_KEYS.CLIENTS, STORAGE_KEYS.VISITS, STORAGE_KEYS.TEAM]);
-    set({ clients: sampleClients, visits: sampleVisits, teamMembers });
+    /* no-op */
   },
 
   resetAllData: async () => {

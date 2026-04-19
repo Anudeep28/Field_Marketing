@@ -13,9 +13,9 @@ export interface RegisteredUser {
 
 const USERS_STORAGE_KEY = '@fieldpulse_registered_users';
 
-// Pre-registered (hardcoded) users — always available as a baseline
+// Pre-registered (hardcoded) users — only the admin is built-in.
+// Field agents must register through the app (persisted via registerUser).
 const BUILTIN_USERS: RegisteredUser[] = [
-  // Admin
   {
     id: 'admin-001',
     name: 'Anurag',
@@ -23,47 +23,6 @@ const BUILTIN_USERS: RegisteredUser[] = [
     phone: '+91 99001 10011',
     password: 'admin123',
     role: 'admin',
-  },
-  // Field Agents
-  {
-    id: 'agent-001',
-    name: 'Arjun Mehta',
-    email: 'arjun@fieldpulse.in',
-    phone: '+91 99887 76655',
-    password: 'agent123',
-    role: 'field_agent',
-  },
-  {
-    id: 'agent-002',
-    name: 'Kavitha Nair',
-    email: 'kavitha@fieldpulse.in',
-    phone: '+91 88776 65544',
-    password: 'agent123',
-    role: 'field_agent',
-  },
-  {
-    id: 'agent-003',
-    name: 'Rohit Verma',
-    email: 'rohit@fieldpulse.in',
-    phone: '+91 77665 54433',
-    password: 'agent123',
-    role: 'field_agent',
-  },
-  {
-    id: 'agent-004',
-    name: 'Deepa Kulkarni',
-    email: 'deepa@fieldpulse.in',
-    phone: '+91 66554 43322',
-    password: 'agent123',
-    role: 'field_agent',
-  },
-  {
-    id: 'agent-005',
-    name: 'Manish Tiwari',
-    email: 'manish@fieldpulse.in',
-    phone: '+91 55443 32211',
-    password: 'agent123',
-    role: 'field_agent',
   },
 ];
 

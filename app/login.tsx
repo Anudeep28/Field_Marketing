@@ -5,19 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store/useStore';
 import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius, Shadow } from '../constants/theme';
 import Button from '../components/ui/Button';
-import { showAlert } from '../utils/alert';
 import { authenticateUser, toUser, loadRegisteredUsers } from '../utils/userDatabase';
 import { useIsMobile } from '../utils/responsive';
 
-const DEMO_ACCOUNTS = [
-  { label: 'Admin', email: 'admin@fieldpulse.in', password: 'admin123' },
-  { label: 'Agent', email: 'arjun@fieldpulse.in', password: 'agent123' },
-];
-
 export default function LoginScreen() {
   const login = useStore((s) => s.login);
-  const clients = useStore((s) => s.clients);
-  const seedData = useStore((s) => s.seedSampleData);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +24,6 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      // Ensure dynamically registered users are loaded from server
       await loadRegisteredUsers();
       const registeredUser = authenticateUser(email, password);
       if (!registeredUser) {
@@ -43,11 +34,6 @@ export default function LoginScreen() {
 
       const user = toUser(registeredUser);
       await login(user);
-
-      // Seed sample data for first-time users
-      if (clients.length === 0) {
-        await seedData(user.id);
-      }
       router.replace('/(tabs)');
     } catch (e) {
       console.error('Login failed:', e);
@@ -57,30 +43,37 @@ export default function LoginScreen() {
     }
   };
 
-  const fillDemo = (account: typeof DEMO_ACCOUNTS[number]) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError('');
-  };
-
   const isMobile = useIsMobile();
   const sp = isMobile ? MobileSpacing : Spacing;
   const fs = isMobile ? MobileFontSize : FontSize;
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: sp.xxl, paddingVertical: sp.xxxl * 2 }]} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>📍</Text>
-          </View>
-          <Text style={styles.appName}>FieldPulse</Text>
-          <Text style={styles.tagline}>Marketing Visit Tracker</Text>
-        </View>
+      {/* Decorative gradient-feel orbs */}
+      <View style={styles.orbTop} pointerEvents="none" />
+      <View style={styles.orbBottom} pointerEvents="none" />
 
-        <View style={styles.form}>
-          <Text style={[styles.formTitle, { fontSize: fs.xxl }]}>Sign In</Text>
-          <Text style={[styles.formSubtitle, { fontSize: fs.md }]}>Enter your credentials to continue</Text>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: sp.xxl, paddingVertical: sp.xxxl }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.card, isMobile && styles.cardMobile]}>
+          {/* Brand header */}
+          <View style={styles.brandRow}>
+            <View style={styles.logoBadge}>
+              <Ionicons name="location" size={22} color={Colors.textOnPrimary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.brandName}>FieldPulse</Text>
+              <Text style={styles.brandTag}>Marketing Visit Tracker</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <Text style={[styles.formTitle, { fontSize: fs.xxl }]}>Welcome back</Text>
+          <Text style={[styles.formSubtitle, { fontSize: fs.sm }]}>Sign in to continue to your dashboard</Text>
 
           {error ? (
             <View style={styles.errorBox}>
@@ -134,23 +127,6 @@ export default function LoginScreen() {
             size="lg"
             style={styles.loginButton}
           />
-
-          {/* Demo Quick Login */}
-          <View style={styles.demoSection}>
-            <Text style={styles.demoTitle}>Quick Demo Login</Text>
-            <View style={styles.demoRow}>
-              {DEMO_ACCOUNTS.map((acc) => (
-                <TouchableOpacity
-                  key={acc.label}
-                  style={styles.demoChip}
-                  onPress={() => fillDemo(acc)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.demoChipText}>{acc.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
         </View>
 
         <Text style={styles.footer}>Powered by Eneru (OPC)</Text>
@@ -162,64 +138,93 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0F172A',
+    overflow: 'hidden',
+  },
+  orbTop: {
+    position: 'absolute',
+    top: -120,
+    right: -80,
+    width: 320,
+    height: 320,
+    borderRadius: 999,
     backgroundColor: Colors.primary,
+    opacity: 0.35,
+  },
+  orbBottom: {
+    position: 'absolute',
+    bottom: -140,
+    left: -100,
+    width: 360,
+    height: 360,
+    borderRadius: 999,
+    backgroundColor: Colors.secondary,
+    opacity: 0.28,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.xxl,
-    paddingVertical: Spacing.xxxl * 2,
-  },
-  header: {
     alignItems: 'center',
-    marginBottom: Spacing.xxxl,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
-  },
-  logoIcon: {
-    fontSize: 40,
-  },
-  appName: {
-    fontSize: FontSize.xxxl,
-    fontWeight: '800',
-    color: Colors.textOnPrimary,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: FontSize.md,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: Spacing.xs,
-  },
-  form: {
+  card: {
+    width: '100%',
+    maxWidth: 440,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xxl,
-    ...Shadow.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    ...Shadow.xl,
+  },
+  cardMobile: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  logoBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.md,
+  },
+  brandName: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: Colors.text,
+    letterSpacing: -0.4,
+  },
+  brandTag: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: Spacing.xl,
   },
   formTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.text,
+    letterSpacing: -0.4,
     marginBottom: Spacing.xs,
   },
   formSubtitle: {
-    fontSize: FontSize.md,
     color: Colors.textSecondary,
     marginBottom: Spacing.xxl,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    backgroundColor: Colors.dangerLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     gap: Spacing.sm,
@@ -243,10 +248,10 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceVariant,
+    backgroundColor: Colors.surface,
     overflow: 'hidden',
   },
   inputIcon: {
@@ -258,6 +263,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     fontSize: FontSize.md,
     color: Colors.text,
+    // @ts-ignore — web-only, harmless on native
+    outlineStyle: 'none' as any,
   },
   eyeBtn: {
     padding: Spacing.md,
@@ -265,44 +272,12 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: Spacing.lg,
   },
-  demoSection: {
-    marginTop: Spacing.xxl,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    paddingTop: Spacing.xl,
-  },
-  demoTitle: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: Spacing.md,
-  },
-  demoRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  demoChip: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  demoChipText: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
   footer: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: FontSize.sm,
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: FontSize.xs,
     fontWeight: '600',
     marginTop: Spacing.xxl,
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
 });

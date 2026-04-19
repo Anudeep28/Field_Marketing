@@ -1,9 +1,10 @@
 export const Colors = {
-  primary: '#1E40AF',
-  primaryLight: '#3B82F6',
-  primaryDark: '#1E3A8A',
-  secondary: '#7C3AED',
-  secondaryLight: '#A78BFA',
+  // Indigo-based modern primary
+  primary: '#4F46E5',
+  primaryLight: '#6366F1',
+  primaryDark: '#3730A3',
+  secondary: '#9333EA',
+  secondaryLight: '#C084FC',
   accent: '#F59E0B',
   accentLight: '#FCD34D',
   success: '#10B981',
@@ -12,23 +13,29 @@ export const Colors = {
   warningLight: '#FEF3C7',
   danger: '#EF4444',
   dangerLight: '#FEE2E2',
-  info: '#3B82F6',
-  infoLight: '#DBEAFE',
+  info: '#6366F1',
+  infoLight: '#E0E7FF',
 
+  // Refined neutrals (slate)
   background: '#F8FAFC',
   surface: '#FFFFFF',
   surfaceVariant: '#F1F5F9',
+  surfaceElevated: '#FFFFFF',
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
 
   text: '#0F172A',
-  textSecondary: '#64748B',
+  textSecondary: '#475569',
   textTertiary: '#94A3B8',
   textInverse: '#FFFFFF',
   textOnPrimary: '#FFFFFF',
 
-  shadow: 'rgba(0, 0, 0, 0.08)',
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  // Subtle gradient accents (hex-only; used as two-tone references)
+  gradientStart: '#4F46E5',
+  gradientEnd: '#7C3AED',
+
+  shadow: 'rgba(15, 23, 42, 0.06)',
+  overlay: 'rgba(15, 23, 42, 0.5)',
 };
 
 export const Spacing = {
@@ -74,48 +81,56 @@ export const MobileFontSize = {
 };
 
 export const BorderRadius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 20,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
   full: 9999,
 };
 
 export const Shadow = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 1,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
     elevation: 3,
   },
   lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  xl: {
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 10,
   },
 };
 
 export const StatusColors: Record<string, { bg: string; text: string }> = {
-  planned: { bg: '#DBEAFE', text: '#1E40AF' },
+  planned: { bg: '#E0E7FF', text: '#3730A3' },
   in_progress: { bg: '#FEF3C7', text: '#92400E' },
   completed: { bg: '#D1FAE5', text: '#065F46' },
   cancelled: { bg: '#FEE2E2', text: '#991B1B' },
-  rescheduled: { bg: '#E0E7FF', text: '#3730A3' },
+  rescheduled: { bg: '#EDE9FE', text: '#5B21B6' },
 };
 
 export const LeadStatusColors: Record<string, { bg: string; text: string }> = {
-  new: { bg: '#DBEAFE', text: '#1E40AF' },
-  contacted: { bg: '#E0E7FF', text: '#3730A3' },
+  new: { bg: '#E0E7FF', text: '#3730A3' },
+  contacted: { bg: '#EDE9FE', text: '#5B21B6' },
   qualified: { bg: '#FEF3C7', text: '#92400E' },
   proposal: { bg: '#FDE68A', text: '#78350F' },
   negotiation: { bg: '#FBCFE8', text: '#9D174D' },
