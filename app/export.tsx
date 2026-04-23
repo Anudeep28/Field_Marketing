@@ -394,20 +394,22 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full ?? 99,
   },
   officeBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.infoLight,
   },
   fieldBadge: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: Colors.successLight,
   },
   locationBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   officeBadgeText: {
-    color: '#4F46E5',
+    color: Colors.primary,
   },
   fieldBadgeText: {
-    color: '#16A34A',
+    color: '#065F46',
   },
   infoTitle: {
     fontSize: FontSize.md,
@@ -424,11 +426,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
-    ...Shadow.sm,
+    ...Shadow.md,
   },
   agentHeaderIcon: {
     width: 48,

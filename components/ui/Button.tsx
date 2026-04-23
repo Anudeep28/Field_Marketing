@@ -39,7 +39,7 @@ export default function Button({
     (styles as any)[sizeKey],
     fullWidth && styles.fullWidth,
     disabled && styles.disabled,
-    variant === 'primary' && Shadow.sm,
+    (variant === 'primary' || variant === 'secondary' || variant === 'danger') && Shadow.md,
     style,
   ];
 
@@ -79,9 +79,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   baseMobile: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.md,
     gap: MobileSpacing.sm,
-    minHeight: 44,
+    minHeight: 46,
   },
   primary: {
     backgroundColor: Colors.primary,
@@ -90,9 +90,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary,
   },
   outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   danger: {
     backgroundColor: Colors.danger,
@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   label: {
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   label_primary: {
     color: Colors.textOnPrimary,
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
   },
   label_outline: {
-    color: Colors.primary,
+    color: Colors.text,
   },
   label_danger: {
     color: Colors.textOnPrimary,

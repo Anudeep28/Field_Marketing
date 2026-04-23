@@ -157,16 +157,20 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     paddingVertical: Spacing.xxxl,
     paddingBottom: Spacing.xxxl + 10,
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
   },
   avatarContainer: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.md,
@@ -191,7 +195,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   roleText: {
     fontSize: FontSize.sm,
@@ -214,13 +220,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: FontSize.xxl,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.text,
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   section: {
     paddingHorizontal: Spacing.lg,
@@ -269,6 +278,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
   menuLabel: {
     flex: 1,

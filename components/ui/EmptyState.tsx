@@ -19,7 +19,7 @@ export default function EmptyState({ icon, title, subtitle, action }: EmptyState
   return (
     <View style={[styles.container, { paddingVertical: sp.xxxl * 2, paddingHorizontal: sp.xxl }]}>
       <View style={[styles.iconContainer, isMobile && { width: 88, height: 88, borderRadius: 44 }]}>
-        <Ionicons name={icon} size={isMobile ? 52 : 48} color={Colors.textTertiary} />
+        <Ionicons name={icon} size={isMobile ? 48 : 44} color={Colors.primary} />
       </View>
       <Text style={[styles.title, { fontSize: fs.lg, marginBottom: sp.sm }]}>{title}</Text>
       {subtitle && <Text style={[styles.subtitle, { fontSize: fs.md }]}>{subtitle}</Text>}
@@ -39,17 +39,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.surfaceVariant,
+    backgroundColor: Colors.infoLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
   },
   title: {
     fontSize: FontSize.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.text,
     textAlign: 'center',
     marginBottom: Spacing.sm,
+    letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: FontSize.md,

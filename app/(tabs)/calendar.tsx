@@ -181,12 +181,15 @@ const styles = StyleSheet.create({
   navButton: {
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceVariant,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   monthTitle: {
     fontSize: FontSize.xl,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Colors.text,
+    letterSpacing: -0.4,
   },
   weekHeader: {
     flexDirection: 'row',
@@ -217,7 +220,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   dayCellToday: {
-    backgroundColor: Colors.infoLight,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
   },
   dayText: {
     fontSize: FontSize.md,
@@ -242,9 +246,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   visitDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: Colors.primary,
   },
   visitDotSelected: {
@@ -288,7 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   timeLine: {
-    width: 4,
+    width: 3,
     borderRadius: 2,
     marginRight: Spacing.md,
     minHeight: 40,

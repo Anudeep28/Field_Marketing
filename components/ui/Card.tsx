@@ -24,12 +24,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.xl,
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   cardMobile: {
     padding: MobileSpacing.lg,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.lg,
     marginBottom: MobileSpacing.md,
   },
   outlined: {
@@ -38,5 +40,6 @@ const styles = StyleSheet.create({
   },
   filled: {
     backgroundColor: Colors.surfaceVariant,
+    borderColor: 'transparent',
   },
 });

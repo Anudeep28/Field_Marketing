@@ -35,10 +35,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   text: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   textSm: {
-    fontSize: FontSize.xs,
+    fontSize: 10,
   },
 });

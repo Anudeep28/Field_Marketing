@@ -136,7 +136,7 @@ export default function DashboardScreen() {
       month: {
         total: monthVisits.length,
         completed: monthVisits.filter((v) => v.status === 'completed').length,
-        newLeads: monthVisits.filter((v) => v.purpose === 'new_lead').length,
+        newLeads: monthVisits.filter((v) => v.purpose === 'new_enquiry').length,
       },
       totalClients: clients.length,
     };
@@ -761,13 +761,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   greetingSection: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
     paddingHorizontal: Spacing.xxl,
     paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
+    paddingBottom: Spacing.xxxl + Spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
   },
   greetingContent: {
     flex: 1,
@@ -808,7 +810,9 @@ const styles = StyleSheet.create({
   bellContainer: {
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
     position: 'relative',
   },
   badge: {
@@ -836,14 +840,17 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   activeVisitCard: {
     marginHorizontal: Spacing.lg,
-    marginTop: -Spacing.lg,
-    backgroundColor: Colors.warning,
-    borderLeftWidth: 4,
-    borderLeftColor: '#B45309',
+    marginTop: -Spacing.xxl,
+    backgroundColor: Colors.warningLight,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    ...Shadow.md,
   },
   activeVisitHeader: {
     flexDirection: 'row',
@@ -888,10 +895,10 @@ const styles = StyleSheet.create({
   quickActionIcon: {
     width: 56,
     height: 56,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadow.sm,
+    ...Shadow.md,
   },
   quickActionText: {
     fontSize: FontSize.xs,
@@ -928,21 +935,23 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 150,
     maxWidth: '48%',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: Spacing.lg,
     gap: 4,
   },
   kpiValue: {
     fontSize: FontSize.xxl,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.text,
+    letterSpacing: -0.5,
   },
   kpiLabel: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
     marginTop: 2,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   agentScroll: {
     paddingHorizontal: Spacing.lg,
@@ -1139,10 +1148,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   recentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: Colors.success,
+    borderWidth: 2,
+    borderColor: Colors.successLight,
   },
   recentContent: {
     flex: 1,
@@ -1178,7 +1189,7 @@ const styles = StyleSheet.create({
   },
   wfoBannerInactive: {
     backgroundColor: Colors.surface,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.border,
   },
   wfoBannerActive: {
@@ -1229,7 +1240,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    ...Shadow.md,
+    ...Shadow.lg,
   },
   exportCardLeft: {
     flexDirection: 'row',

@@ -175,7 +175,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     height: 44,
     gap: Spacing.sm,
-    ...Shadow.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   searchInput: {
     flex: 1,
@@ -183,9 +184,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   filterRow: {
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
   },
   filterContainer: {
     paddingHorizontal: Spacing.lg,
@@ -196,9 +195,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#E2E8F0',
-    borderWidth: 2,
-    borderColor: '#475569',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   filterChipActive: {
     backgroundColor: Colors.primary,
@@ -206,11 +205,12 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
   filterChipTextActive: {
     color: Colors.textOnPrimary,
+    fontWeight: '700',
   },
   resultsBar: {
     paddingHorizontal: Spacing.lg,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadow.lg,
+    ...Shadow.xl,
   },
   fabMobile: {
     bottom: 80,

@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   input: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.lg,
@@ -271,9 +271,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.infoLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.xl,
@@ -329,7 +327,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: Colors.infoLight,
   },
   dropdownAvatar: {
     width: 36,
@@ -386,7 +384,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
   },
   purposeChipActive: {
@@ -400,6 +398,7 @@ const styles = StyleSheet.create({
   },
   purposeTextActive: {
     color: Colors.textOnPrimary,
+    fontWeight: '700',
   },
   saveButton: {
     marginTop: Spacing.lg,

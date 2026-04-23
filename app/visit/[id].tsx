@@ -352,9 +352,9 @@ const styles = StyleSheet.create({
   assignmentBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.infoLight,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   timelineValue: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
   timelineAddress: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
   notesText: { fontSize: FontSize.md, color: Colors.textSecondary, lineHeight: 22 },
-  outcomeCard: { borderWidth: 2, borderColor: Colors.primary },
+  outcomeCard: { borderWidth: 1, borderColor: Colors.primary },
   outcomeInput: {
     borderWidth: 1,
     borderColor: Colors.border,
