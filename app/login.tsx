@@ -10,24 +10,24 @@ import { useIsMobile } from '../utils/responsive';
 
 export default function LoginScreen() {
   const login = useStore((s) => s.login);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter email and password');
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter username and password');
       return;
     }
     setError('');
     setLoading(true);
     try {
       await loadRegisteredUsers();
-      const registeredUser = authenticateUser(email, password);
+      const registeredUser = authenticateUser(username, password);
       if (!registeredUser) {
-        setError('Invalid email or password');
+        setError('Invalid username or password');
         setLoading(false);
         return;
       }
@@ -83,16 +83,15 @@ export default function LoginScreen() {
           ) : null}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Username</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="mail-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
-                value={email}
-                onChangeText={(t) => { setEmail(t); setError(''); }}
-                placeholder="you@fieldpulse.in"
+                value={username}
+                onChangeText={(t) => { setUsername(t); setError(''); }}
+                placeholder="your username"
                 placeholderTextColor={Colors.textTertiary}
-                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -122,7 +121,7 @@ export default function LoginScreen() {
             title="Sign In"
             onPress={handleLogin}
             loading={loading}
-            disabled={!email.trim() || !password.trim()}
+            disabled={!username.trim() || !password.trim()}
             fullWidth
             size="lg"
             style={styles.loginButton}

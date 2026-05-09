@@ -9,7 +9,7 @@ import Button from '../../components/ui/Button';
 import { showAlert } from '../../utils/alert';
 import { formatDate, getToday, getWeekRange, getMonthRange, generateId } from '../../utils/helpers';
 import { UserRole } from '../../types';
-import { registerUser, isEmailTaken } from '../../utils/userDatabase';
+import { registerUser, isEmailTaken, isUsernameTaken } from '../../utils/userDatabase';
 import { useIsMobile } from '../../utils/responsive';
 
 export default function TeamScreen() {
@@ -22,6 +22,7 @@ export default function TeamScreen() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -52,7 +53,7 @@ export default function TeamScreen() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
-        (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.phone.includes(q)
+        (m) => m.name.toLowerCase().includes(q) || (m.username || '').toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.phone.includes(q)
       );
     }
     return result;
@@ -114,15 +115,23 @@ export default function TeamScreen() {
       showAlert('Required', 'Please enter name and phone number');
       return;
     }
-    if (!newEmail.trim()) {
-      showAlert('Required', 'Please enter an email address (used for login)');
+    if (!newUsername.trim()) {
+      showAlert('Required', 'Please enter a username (used for login)');
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]{3,}$/.test(newUsername.trim())) {
+      showAlert('Invalid Username', 'Use at least 3 characters: letters, numbers, dot, underscore or hyphen.');
       return;
     }
     if (!newPassword.trim() || newPassword.trim().length < 6) {
       showAlert('Required', 'Please set a password (min 6 characters)');
       return;
     }
-    if (isEmailTaken(newEmail)) {
+    if (isUsernameTaken(newUsername)) {
+      showAlert('Error', 'A user with this username already exists');
+      return;
+    }
+    if (newEmail.trim() && isEmailTaken(newEmail)) {
       showAlert('Error', 'A user with this email already exists');
       return;
     }
@@ -134,6 +143,7 @@ export default function TeamScreen() {
       await registerUser({
         id: memberId,
         name: newName.trim(),
+        username: newUsername.trim(),
         email: newEmail.trim(),
         phone: newPhone.trim(),
         password: newPassword.trim(),
@@ -147,14 +157,16 @@ export default function TeamScreen() {
     await addTeamMember({
       id: memberId,
       name: newName.trim(),
+      username: newUsername.trim(),
       email: newEmail.trim(),
       phone: newPhone.trim(),
       role: 'field_agent',
       status: 'active',
     });
-    showAlert('Success', `${newName.trim()} can now log in with:\nEmail: ${newEmail.trim()}\nPassword: ${newPassword.trim()}`);
+    showAlert('Success', `${newName.trim()} can now log in with:\nUsername: ${newUsername.trim()}\nPassword: ${newPassword.trim()}`);
     setShowAddModal(false);
     setNewName('');
+    setNewUsername('');
     setNewEmail('');
     setNewPhone('');
     setNewPassword('');
@@ -364,7 +376,20 @@ export default function TeamScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email * (used for login)</Text>
+                <Text style={styles.label}>Username * (used for login)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newUsername}
+                  onChangeText={setNewUsername}
+                  placeholder="e.g. ravi.kumar"
+                  placeholderTextColor={Colors.textTertiary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email (optional)</Text>
                 <TextInput
                   style={styles.input}
                   value={newEmail}
@@ -411,7 +436,7 @@ export default function TeamScreen() {
                 onPress={handleAddMember}
                 fullWidth
                 size="lg"
-                disabled={!newName.trim() || !newPhone.trim() || !newEmail.trim() || !newPassword.trim()}
+                disabled={!newName.trim() || !newPhone.trim() || !newUsername.trim() || !newPassword.trim()}
                 style={{ marginTop: Spacing.lg }}
               />
             </ScrollView>

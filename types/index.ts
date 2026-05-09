@@ -3,6 +3,7 @@ export type UserRole = 'admin' | 'field_agent';
 export interface User {
   id: string;
   name: string;
+  username: string;
   email: string;
   phone: string;
   role: UserRole;
@@ -78,6 +79,7 @@ export interface DailyStats {
 export interface TeamMember {
   id: string;
   name: string;
+  username: string;
   email: string;
   phone: string;
   role: UserRole;

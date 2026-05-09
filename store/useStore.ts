@@ -7,13 +7,23 @@ import { broadcastChange, pushSyncEvent, syncSet, syncRemove, syncGet } from '..
 
 export interface AdminNotification {
   id: string;
-  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled';
+  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled' | 'wfo_revert_request';
   message: string;
   agentName: string;
   clientName: string;
   visitId: string;
   timestamp: string;
   read: boolean;
+  /** Set when type === 'wfo_revert_request'; the requesting agent's user id. */
+  userId?: string;
+}
+
+/** A pending request from a field agent asking the admin to switch their WFO toggle off. */
+export interface WfoRevertRequest {
+  userId: string;
+  agentName: string;
+  date: string;        // YYYY-MM-DD the request was made for
+  requestedAt: string; // ISO timestamp
 }
 
 const STORAGE_KEYS = {
@@ -24,6 +34,7 @@ const STORAGE_KEYS = {
   TEAM: '@fieldpulse_team',
   OFFICE_STATUS: '@fieldpulse_office_status',
   OFFICE_HISTORY: '@fieldpulse_office_history',
+  WFO_REVERT_REQUESTS: '@fieldpulse_wfo_revert_requests',
 };
 
 // Helper: write to both local AsyncStorage AND the shared server store
@@ -47,6 +58,42 @@ async function sharedGet(key: string): Promise<string | null> {
     return serverValue;
   }
   return AsyncStorage.getItem(key);
+}
+
+// Shared helper used by both agent self-enable and admin-approved revert.
+// Writes today's WFO live state and the persistent history log for `userId`.
+async function writeWfoState(
+  get: () => AppState,
+  set: (partial: Partial<AppState>) => void,
+  userId: string,
+  isOffice: boolean
+): Promise<void> {
+  const { officeToday, officeHistory } = get();
+  const today = getToday();
+
+  const updatedToday = { ...officeToday };
+  if (isOffice) {
+    updatedToday[userId] = today;
+  } else {
+    delete updatedToday[userId];
+  }
+
+  const userHistory: string[] = [...(officeHistory[userId] || [])];
+  if (isOffice && !userHistory.includes(today)) {
+    userHistory.push(today);
+    userHistory.sort();
+  } else if (!isOffice) {
+    const idx = userHistory.indexOf(today);
+    if (idx !== -1) userHistory.splice(idx, 1);
+  }
+  const updatedHistory = { ...officeHistory, [userId]: userHistory };
+
+  await Promise.all([
+    sharedSet(STORAGE_KEYS.OFFICE_STATUS, JSON.stringify(updatedToday)),
+    sharedSet(STORAGE_KEYS.OFFICE_HISTORY, JSON.stringify(updatedHistory)),
+  ]);
+  broadcastChange([STORAGE_KEYS.OFFICE_STATUS, STORAGE_KEYS.OFFICE_HISTORY]);
+  set({ officeToday: updatedToday, officeHistory: updatedHistory });
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -74,6 +121,7 @@ interface AppState {
   activeVisit: Visit | null;
   officeToday: Record<string, string>; // userId → date string (today = WFO)
   officeHistory: Record<string, string[]>; // userId → sorted array of WFO dates
+  wfoRevertRequests: Record<string, WfoRevertRequest>; // userId → pending revert request
 
   // Admin Notifications
   notifications: AdminNotification[];
@@ -116,6 +164,11 @@ interface AppState {
   setWorkingFromOffice: (isOffice: boolean) => Promise<void>;
   getOfficeHistory: () => Record<string, string[]>;
 
+  // WFO revert request flow
+  requestWfoRevert: () => Promise<void>;
+  approveWfoRevert: (userId: string) => Promise<void>;
+  denyWfoRevert: (userId: string) => Promise<void>;
+
   // Live refresh
   refreshData: () => Promise<void>;
 
@@ -147,6 +200,7 @@ export const useStore = create<AppState>((set, get) => ({
   activeVisit: null,
   officeToday: {},
   officeHistory: {},
+  wfoRevertRequests: {},
   notifications: [],
 
   addNotification: (notification) => {
@@ -453,12 +507,14 @@ export const useStore = create<AppState>((set, get) => ({
       const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : current.officeToday;
       const officeHistoryStr = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
       const officeHistory: Record<string, string[]> = officeHistoryStr ? JSON.parse(officeHistoryStr) : current.officeHistory;
+      const wfoReqStr = await sharedGet(STORAGE_KEYS.WFO_REVERT_REQUESTS);
+      const wfoRevertRequests: Record<string, WfoRevertRequest> = wfoReqStr ? JSON.parse(wfoReqStr) : current.wfoRevertRequests;
       const currentUser = current.currentUser;
       const activeVisit = currentUser
         ? visits.find((v: Visit) => v.status === 'in_progress' && v.userId === currentUser.id) || null
         : null;
 
-      set({ visits, clients, teamMembers, activeVisit, officeToday, officeHistory });
+      set({ visits, clients, teamMembers, activeVisit, officeToday, officeHistory, wfoRevertRequests });
       
       // If we have in-memory data but server is empty, push data back to server
       if (!visitsStr && visits.length > 0) {
@@ -475,39 +531,78 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  // Internal: write WFO state for a given user id (used by agent self-enable
+  // and by admin-approved revert). Updates today's live status + history log.
   setWorkingFromOffice: async (isOffice: boolean) => {
-    const { currentUser, officeToday, officeHistory } = get();
+    const { currentUser } = get();
     if (!currentUser) return;
-    const today = getToday();
-
-    // Update today's live status
-    const updatedToday = { ...officeToday };
-    if (isOffice) {
-      updatedToday[currentUser.id] = today;
-    } else {
-      delete updatedToday[currentUser.id];
+    // Agents can only set themselves to ON via this path. Turning OFF requires
+    // an admin-approved revert request — reject silent off-toggles here.
+    if (!isOffice && currentUser.role !== 'admin') {
+      console.warn('Agents cannot directly disable WFO; submit a revert request instead.');
+      return;
     }
-
-    // Update persistent history log
-    const userHistory: string[] = [...(officeHistory[currentUser.id] || [])];
-    if (isOffice && !userHistory.includes(today)) {
-      userHistory.push(today);
-      userHistory.sort();
-    } else if (!isOffice) {
-      const idx = userHistory.indexOf(today);
-      if (idx !== -1) userHistory.splice(idx, 1);
-    }
-    const updatedHistory = { ...officeHistory, [currentUser.id]: userHistory };
-
-    await Promise.all([
-      sharedSet(STORAGE_KEYS.OFFICE_STATUS, JSON.stringify(updatedToday)),
-      sharedSet(STORAGE_KEYS.OFFICE_HISTORY, JSON.stringify(updatedHistory)),
-    ]);
-    broadcastChange([STORAGE_KEYS.OFFICE_STATUS, STORAGE_KEYS.OFFICE_HISTORY]);
-    set({ officeToday: updatedToday, officeHistory: updatedHistory });
+    await writeWfoState(get, set, currentUser.id, isOffice);
   },
 
   getOfficeHistory: () => get().officeHistory,
+
+  // ── WFO revert request flow ─────────────────────────────────
+  requestWfoRevert: async () => {
+    const { currentUser, wfoRevertRequests, officeToday } = get();
+    if (!currentUser || currentUser.role !== 'field_agent') return;
+    const today = getToday();
+    // Only meaningful if the agent is currently marked WFO today
+    if (officeToday[currentUser.id] !== today) return;
+    // Idempotent: don't create duplicates
+    if (wfoRevertRequests[currentUser.id]) return;
+
+    const request: WfoRevertRequest = {
+      userId: currentUser.id,
+      agentName: currentUser.name,
+      date: today,
+      requestedAt: getNow(),
+    };
+    const updated = { ...wfoRevertRequests, [currentUser.id]: request };
+    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
+    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
+    set({ wfoRevertRequests: updated });
+
+    // Push event so admin tabs see a live notification
+    pushSyncEvent({
+      type: 'wfo_revert_request',
+      message: `${currentUser.name} requested to switch from Office to Field`,
+      agentName: currentUser.name,
+      clientName: '',
+      visitId: currentUser.id, // reuse field for routing/dedupe
+    });
+  },
+
+  approveWfoRevert: async (userId: string) => {
+    const { currentUser, wfoRevertRequests } = get();
+    if (!currentUser || currentUser.role !== 'admin') return;
+    if (!wfoRevertRequests[userId]) return;
+
+    // Turn off WFO for that user (admin override)
+    await writeWfoState(get, set, userId, false);
+
+    const updated = { ...get().wfoRevertRequests };
+    delete updated[userId];
+    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
+    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
+    set({ wfoRevertRequests: updated });
+  },
+
+  denyWfoRevert: async (userId: string) => {
+    const { currentUser, wfoRevertRequests } = get();
+    if (!currentUser || currentUser.role !== 'admin') return;
+    if (!wfoRevertRequests[userId]) return;
+    const updated = { ...wfoRevertRequests };
+    delete updated[userId];
+    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
+    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
+    set({ wfoRevertRequests: updated });
+  },
 
   // ── Settings ──────────────────────────────────────
   updateSettings: async (updates) => {
@@ -540,6 +635,8 @@ export const useStore = create<AppState>((set, get) => ({
       const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : {};
       const officeHistoryStr2 = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
       const officeHistory: Record<string, string[]> = officeHistoryStr2 ? JSON.parse(officeHistoryStr2) : {};
+      const wfoReqStr = await sharedGet(STORAGE_KEYS.WFO_REVERT_REQUESTS);
+      const wfoRevertRequests: Record<string, WfoRevertRequest> = wfoReqStr ? JSON.parse(wfoReqStr) : {};
 
       // Find active visit for the current user only
       const activeVisit = currentUser
@@ -556,6 +653,7 @@ export const useStore = create<AppState>((set, get) => ({
         activeVisit,
         officeToday,
         officeHistory,
+        wfoRevertRequests,
         isLoading: false,
       });
       

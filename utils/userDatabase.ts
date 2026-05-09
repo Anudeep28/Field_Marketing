@@ -5,10 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface RegisteredUser {
   id: string;
   name: string;
+  username: string;
   email: string;
   phone: string;
   password: string;
   role: UserRole;
+}
+
+/** Derive a safe username from email local-part (used for migrating legacy users). */
+function deriveUsernameFromEmail(email: string): string {
+  const local = (email || '').split('@')[0] || '';
+  // strip non-alphanumerics so the derived username is predictable
+  return local.toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'user';
 }
 
 const USERS_STORAGE_KEY = '@fieldpulse_registered_users';
@@ -19,6 +27,7 @@ const BUILTIN_USERS: RegisteredUser[] = [
   {
     id: 'admin-001',
     name: 'Anurag',
+    username: 'admin',
     email: 'admin@fieldpulse.in',
     phone: '+91 99001 10011',
     password: 'admin123',
@@ -49,9 +58,21 @@ export async function loadRegisteredUsers(): Promise<void> {
     if (raw) {
       const parsed: RegisteredUser[] = JSON.parse(raw);
       // Merge: only add users whose email isn't already in BUILTIN_USERS
-      dynamicUsers = parsed.filter(
-        (u) => !BUILTIN_USERS.some((b) => b.email.toLowerCase() === u.email.toLowerCase())
-      );
+      // and migrate legacy users (no username) by deriving one from email.
+      const taken = new Set<string>(BUILTIN_USERS.map((b) => b.username.toLowerCase()));
+      dynamicUsers = parsed
+        .filter((u) => !BUILTIN_USERS.some((b) => b.email.toLowerCase() === u.email.toLowerCase()))
+        .map((u) => {
+          if (u.username && u.username.trim()) return u;
+          let candidate = deriveUsernameFromEmail(u.email);
+          // ensure uniqueness within this batch
+          let suffix = 1;
+          while (taken.has(candidate.toLowerCase())) {
+            candidate = `${deriveUsernameFromEmail(u.email)}${suffix++}`;
+          }
+          taken.add(candidate.toLowerCase());
+          return { ...u, username: candidate };
+        });
     }
     _loaded = true;
   } catch (e) {
@@ -70,9 +91,16 @@ async function persistDynamicUsers(): Promise<void> {
   }
 }
 
-export function authenticateUser(email: string, password: string): RegisteredUser | null {
+/**
+ * Authenticate a user by username (preferred) or email (fallback).
+ * The first parameter is named `identifier` to make either accepted form clear.
+ */
+export function authenticateUser(identifier: string, password: string): RegisteredUser | null {
+  const id = identifier.toLowerCase().trim();
   const user = allUsers().find(
-    (u) => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
+    (u) =>
+      ((u.username || '').toLowerCase() === id || u.email.toLowerCase() === id) &&
+      u.password === password
   );
   return user || null;
 }
@@ -81,6 +109,7 @@ export function toUser(reg: RegisteredUser): User {
   return {
     id: reg.id,
     name: reg.name,
+    username: reg.username,
     email: reg.email,
     phone: reg.phone,
     role: reg.role,
@@ -93,11 +122,12 @@ export function getAllAgents(): RegisteredUser[] {
 }
 
 export async function registerUser(user: RegisteredUser): Promise<void> {
+  // Check if username already exists
+  if (isUsernameTaken(user.username)) {
+    throw new Error('A user with this username already exists');
+  }
   // Check if email already exists
-  const existing = allUsers().find(
-    (u) => u.email.toLowerCase() === user.email.toLowerCase()
-  );
-  if (existing) {
+  if (user.email && isEmailTaken(user.email)) {
     throw new Error('A user with this email already exists');
   }
   dynamicUsers.push(user);
@@ -108,4 +138,9 @@ export function isEmailTaken(email: string): boolean {
   return allUsers().some(
     (u) => u.email.toLowerCase() === email.toLowerCase().trim()
   );
+}
+
+export function isUsernameTaken(username: string): boolean {
+  const u = username.toLowerCase().trim();
+  return allUsers().some((x) => (x.username || '').toLowerCase() === u);
 }

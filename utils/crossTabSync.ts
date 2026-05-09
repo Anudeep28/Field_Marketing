@@ -17,7 +17,7 @@ import { Platform } from 'react-native';
 
 export interface SyncEvent {
   id?: string;
-  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled' | 'data_changed';
+  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled' | 'data_changed' | 'wfo_revert_request';
   message: string;
   agentName: string;
   clientName: string;
