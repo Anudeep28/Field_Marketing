@@ -9,7 +9,7 @@ import Button from '../../components/ui/Button';
 import { showAlert } from '../../utils/alert';
 import { formatDate, getToday, getWeekRange, getMonthRange, generateId } from '../../utils/helpers';
 import { UserRole } from '../../types';
-import { registerUser, isEmailTaken, isUsernameTaken } from '../../utils/userDatabase';
+import { registerUser, isEmailTaken, isUsernameTaken, updateUserCredentials } from '../../utils/userDatabase';
 import { useIsMobile } from '../../utils/responsive';
 
 export default function TeamScreen() {
@@ -21,6 +21,11 @@ export default function TeamScreen() {
   const removeTeamMember = useStore((s) => s.removeTeamMember);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editMember, setEditMember] = useState<{ id: string; name: string; username: string } | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -189,6 +194,50 @@ export default function TeamScreen() {
     );
   };
 
+  const handleOpenEdit = (member: { id: string; name: string; username?: string }) => {
+    setEditMember({ id: member.id, name: member.name, username: member.username || '' });
+    setEditUsername(member.username || '');
+    setEditPassword('');
+    setShowEditPassword(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editMember) return;
+    if (!editUsername.trim()) {
+      showAlert('Required', 'Username cannot be empty');
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]{3,}$/.test(editUsername.trim())) {
+      showAlert('Invalid Username', 'Use at least 3 characters: letters, numbers, dot, underscore or hyphen.');
+      return;
+    }
+    if (editPassword.trim() && editPassword.trim().length < 6) {
+      showAlert('Invalid Password', 'Password must be at least 6 characters');
+      return;
+    }
+    setEditLoading(true);
+    try {
+      const updates: { username?: string; password?: string } = {};
+      if (editUsername.trim() !== editMember.username) updates.username = editUsername.trim();
+      if (editPassword.trim()) updates.password = editPassword.trim();
+      if (Object.keys(updates).length === 0) {
+        showAlert('No Changes', 'Nothing was changed.');
+        setEditMember(null);
+        return;
+      }
+      await updateUserCredentials(editMember.id, updates);
+      if (updates.username) {
+        await updateTeamMember(editMember.id, { username: updates.username });
+      }
+      showAlert('Success', `Credentials updated for ${editMember.name}`);
+      setEditMember(null);
+    } catch (e: any) {
+      showAlert('Error', e.message || 'Failed to update credentials');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleRemove = (memberId: string, name: string) => {
     showAlert('Remove Member', `Remove ${name} from the team? Their visit history will be preserved.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -327,6 +376,13 @@ export default function TeamScreen() {
               <View style={styles.memberActions}>
                 <TouchableOpacity
                   style={styles.actionBtn}
+                  onPress={() => handleOpenEdit(member)}
+                >
+                  <Ionicons name="create-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.actionText, { color: Colors.primary }]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
                   onPress={() => handleToggleStatus(member.id, member.status)}
                 >
                   <Ionicons
@@ -350,6 +406,66 @@ export default function TeamScreen() {
           );
         })
       )}
+
+      {/* Edit Credentials Modal */}
+      <Modal visible={!!editMember} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Credentials</Text>
+              <TouchableOpacity onPress={() => setEditMember(null)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.label, { color: Colors.textSecondary, marginBottom: Spacing.xl }]}>
+              {editMember?.name}
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Username *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editUsername}
+                  onChangeText={setEditUsername}
+                  placeholder="Username"
+                  placeholderTextColor={Colors.textTertiary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>New Password (leave blank to keep existing)</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={editPassword}
+                    onChangeText={setEditPassword}
+                    placeholder="Min 6 characters"
+                    placeholderTextColor={Colors.textTertiary}
+                    secureTextEntry={!showEditPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowEditPassword(!showEditPassword)} style={styles.eyeBtn}>
+                    <Ionicons name={showEditPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Button
+                title="Save Changes"
+                onPress={handleSaveEdit}
+                fullWidth
+                size="lg"
+                loading={editLoading}
+                disabled={!editUsername.trim()}
+                style={{ marginTop: Spacing.lg }}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add Member Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>

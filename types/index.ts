@@ -14,7 +14,7 @@ export interface User {
 
 export type VisitStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled' | 'rescheduled';
 export type VisitPurpose = 'collection' | 'new_enquiry' | 'trial' | 'follow_up' | 'other';
-export type LeadStatus = 'new_enquiry' | 'trial' | 'collection' | 'normal_visit';
+export type LeadStatus = 'not_defined' | 'trial' | 'collection' | 'normal_visit';
 
 export interface GeoLocation {
   latitude: number;

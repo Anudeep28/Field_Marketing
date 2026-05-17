@@ -129,7 +129,7 @@ export const StatusColors: Record<string, { bg: string; text: string }> = {
 };
 
 export const LeadStatusColors: Record<string, { bg: string; text: string }> = {
-  new_enquiry: { bg: '#E0E7FF', text: '#3730A3' },
+  not_defined: { bg: '#F3F4F6', text: '#6B7280' },
   trial: { bg: '#FEF3C7', text: '#92400E' },
   collection: { bg: '#D1FAE5', text: '#065F46' },
   normal_visit: { bg: '#EDE9FE', text: '#5B21B6' },

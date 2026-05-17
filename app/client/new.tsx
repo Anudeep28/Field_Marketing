@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useStore } from '../../store/useStore';
 import { Colors, Spacing, MobileSpacing, FontSize, MobileFontSize, BorderRadius } from '../../constants/theme';
 import Button from '../../components/ui/Button';
-import { LeadStatus } from '../../types';
 import { showAlert } from '../../utils/alert';
 import { useIsMobile } from '../../utils/responsive';
-
-const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: 'new_enquiry', label: 'New Enquiry' },
-  { value: 'trial', label: 'Trial' },
-  { value: 'collection', label: 'Collection' },
-  { value: 'normal_visit', label: 'Normal Visit' },
-];
 
 export default function NewClientScreen() {
   const { currentUser, addClient } = useStore();
@@ -27,7 +19,6 @@ export default function NewClientScreen() {
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [leadStatus, setLeadStatus] = useState<LeadStatus>('new_enquiry');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +35,7 @@ export default function NewClientScreen() {
         company: name.trim() || undefined,
         phone: '',
         address: address.trim() || undefined,
-        leadStatus,
+        leadStatus: 'not_defined',
         assignedTo: currentUser?.id || '',
         notes: notes.trim() || undefined,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
@@ -87,23 +78,6 @@ export default function NewClientScreen() {
             placeholder="Street, City, State"
             placeholderTextColor={Colors.textTertiary}
           />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Lead Status</Text>
-          <View style={styles.statusGrid}>
-            {LEAD_STATUSES.map((s) => (
-              <TouchableOpacity
-                key={s.value}
-                style={[styles.statusChip, leadStatus === s.value && styles.statusChipActive]}
-                onPress={() => setLeadStatus(s.value)}
-              >
-                <Text style={[styles.statusText, leadStatus === s.value && styles.statusTextActive]}>
-                  {s.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -168,30 +142,5 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   textArea: { minHeight: 80, paddingTop: Spacing.md },
-  statusGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  statusChip: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  statusChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  statusText: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  statusTextActive: {
-    color: Colors.textOnPrimary,
-  },
   saveButton: { marginTop: Spacing.lg },
 });

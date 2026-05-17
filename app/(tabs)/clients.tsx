@@ -14,7 +14,7 @@ import { useIsMobile } from '../../utils/responsive';
 
 const LEAD_FILTERS: { value: LeadStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'new_enquiry', label: 'New Enquiry' },
+  { value: 'not_defined', label: 'Not Defined' },
   { value: 'trial', label: 'Trial' },
   { value: 'collection', label: 'Collection' },
   { value: 'normal_visit', label: 'Normal Visit' },

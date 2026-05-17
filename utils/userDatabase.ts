@@ -140,7 +140,29 @@ export function isEmailTaken(email: string): boolean {
   );
 }
 
-export function isUsernameTaken(username: string): boolean {
+export function isUsernameTaken(username: string, excludeId?: string): boolean {
   const u = username.toLowerCase().trim();
-  return allUsers().some((x) => (x.username || '').toLowerCase() === u);
+  return allUsers().some((x) => (x.username || '').toLowerCase() === u && x.id !== excludeId);
+}
+
+/**
+ * Update username and/or password for an existing dynamic (non-builtin) user.
+ * Throws if the new username is already taken by another user.
+ */
+export async function updateUserCredentials(
+  userId: string,
+  updates: { username?: string; password?: string }
+): Promise<void> {
+  const idx = dynamicUsers.findIndex((u) => u.id === userId);
+  if (idx === -1) throw new Error('User not found or cannot be edited');
+  if (updates.username) {
+    if (isUsernameTaken(updates.username, userId)) {
+      throw new Error('This username is already taken');
+    }
+    dynamicUsers[idx] = { ...dynamicUsers[idx], username: updates.username.trim() };
+  }
+  if (updates.password) {
+    dynamicUsers[idx] = { ...dynamicUsers[idx], password: updates.password.trim() };
+  }
+  await persistDynamicUsers();
 }
