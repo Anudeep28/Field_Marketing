@@ -146,18 +146,21 @@ export function getGreeting(): string {
 
 export function generateCSVFromAttendance(
   officeHistory: Record<string, string[]>,
-  teamMembers: { id: string; name: string }[]
+  teamMembers: { id: string; name: string }[],
+  officeDuration?: Record<string, Record<string, number>>
 ): string {
   const nameMap: Record<string, string> = {};
   teamMembers.forEach((m) => { nameMap[m.id] = m.name; });
 
-  const headers = ['Agent Name', 'Date', 'Work Location'];
+  const headers = ['Agent Name', 'Date', 'Work Location', 'Hours in Office'];
   const rows: string[][] = [];
 
   Object.entries(officeHistory).forEach(([userId, dates]) => {
     const name = nameMap[userId] || userId;
     dates.forEach((date) => {
-      rows.push([`"${name}"`, date, 'Office']);
+      const minutes = officeDuration?.[userId]?.[date] ?? 0;
+      const hours = minutes > 0 ? (minutes / 60).toFixed(2) : '';
+      rows.push([`"${name}"`, date, 'Office', hours]);
     });
   });
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,12 +21,6 @@ const PURPOSES: { value: VisitPurpose; label: string }[] = [
 export default function NewVisitScreen() {
   const { clients, currentUser, addVisit } = useStore();
 
-  // Only admin can create visits — redirect agents
-  useEffect(() => {
-    if (currentUser?.role === 'field_agent') {
-      router.back();
-    }
-  }, [currentUser]);
 
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
@@ -39,6 +33,7 @@ export default function NewVisitScreen() {
   const [clientSearch, setClientSearch] = useState('');
 
   const isAdmin = currentUser?.role === 'admin';
+  const isAgent = currentUser?.role === 'field_agent';
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients;
@@ -48,14 +43,14 @@ export default function NewVisitScreen() {
 
   const handleSave = async () => {
     if (!clientName.trim()) {
-      showAlert('Required', 'Please enter a client name');
+      showAlert('Required', 'Please enter a company name');
       return;
     }
     setLoading(true);
     try {
-      // Admin creates unassigned visits — agents pick them up later
-      const targetUserId = '';
-      const targetUserName = '';
+      // Agent creates visit assigned to themselves; admin creates unassigned
+      const targetUserId = isAgent ? (currentUser?.id || '') : '';
+      const targetUserName = isAgent ? (currentUser?.name || '') : '';
 
       await addVisit({
         userId: targetUserId,
@@ -70,7 +65,9 @@ export default function NewVisitScreen() {
         notes: notes.trim(),
         photos: [],
       });
-      const msg = 'Visit planned. Field agents can now pick it up.';
+      const msg = isAgent
+        ? 'Visit planned for yourself.'
+        : 'Visit planned. Field agents can now pick it up.';
       showAlert('Success', msg, [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -89,24 +86,24 @@ export default function NewVisitScreen() {
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={[styles.form, { padding: sp.lg }]}>
 
-        {/* Info banner for admin */}
-        {isAdmin && (
-          <View style={styles.infoBanner}>
-            <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
-            <Text style={styles.infoBannerText}>
-              This visit will be available for all field agents to pick up.
-            </Text>
-          </View>
-        )}
+        {/* Info banner */}
+        <View style={styles.infoBanner}>
+          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+          <Text style={styles.infoBannerText}>
+            {isAgent
+              ? 'This visit will be assigned to you and visible only to you and the admin.'
+              : 'This visit will be available for all field agents to pick up.'}
+          </Text>
+        </View>
 
-        {/* Client Selection */}
+        {/* Company Name */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Client Name *</Text>
+          <Text style={styles.label}>Company Name *</Text>
           <TextInput
             style={styles.input}
             value={clientName}
             onChangeText={setClientName}
-            placeholder="Enter client name"
+            placeholder="Enter company name"
             placeholderTextColor={Colors.textTertiary}
           />
           {clients.length > 0 && !showClientPicker && (
@@ -148,7 +145,7 @@ export default function NewVisitScreen() {
                     style={[styles.dropdownItem, clientId === c.id && styles.dropdownItemActive]}
                     onPress={() => {
                       setClientId(c.id);
-                      setClientName(c.name);
+                      setClientName(c.company || c.name);
                       setShowClientPicker(false);
                       setClientSearch('');
                     }}
@@ -157,8 +154,7 @@ export default function NewVisitScreen() {
                       <Text style={styles.dropdownAvatarText}>{c.name.charAt(0).toUpperCase()}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.dropdownItemText}>{c.name}</Text>
-                      {c.company ? <Text style={styles.dropdownItemSub}>{c.company}</Text> : null}
+                      <Text style={styles.dropdownItemText}>{c.company || c.name}</Text>
                     </View>
                     {clientId === c.id && (
                       <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
@@ -228,7 +224,7 @@ export default function NewVisitScreen() {
         </View>
 
         <Button
-          title="Plan Visit for Agents"
+          title={isAgent ? 'Plan Visit for Myself' : 'Plan Visit for Agents'}
           onPress={handleSave}
           loading={loading}
           disabled={!clientName.trim()}

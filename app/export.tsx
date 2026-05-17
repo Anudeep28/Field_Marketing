@@ -17,6 +17,7 @@ export default function ExportScreen() {
   const clients = useStore((s) => s.clients);
   const teamMembers = useStore((s) => s.teamMembers);
   const officeHistory = useStore((s) => s.officeHistory);
+  const officeDuration = useStore((s) => s.officeDuration);
   const [loading, setLoading] = useState('');
 
   if (!currentUser) return <Redirect href="/(tabs)" />;
@@ -106,7 +107,7 @@ export default function ExportScreen() {
     setLoading('attendance');
     try {
       const membersForExport = isAgent ? [{ id: currentUser.id, name: currentUser.name }] : teamMembers;
-      const csv = generateCSVFromAttendance(historyToExport, membersForExport);
+      const csv = generateCSVFromAttendance(historyToExport, membersForExport, officeDuration);
       const fileName = isAgent
         ? `my_attendance_${getToday()}.csv`
         : `fieldpulse_attendance_${getToday()}.csv`;

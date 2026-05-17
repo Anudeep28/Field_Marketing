@@ -7,23 +7,13 @@ import { broadcastChange, pushSyncEvent, syncSet, syncRemove, syncGet } from '..
 
 export interface AdminNotification {
   id: string;
-  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled' | 'wfo_revert_request';
+  type: 'visit_picked' | 'visit_checked_in' | 'visit_completed' | 'visit_cancelled';
   message: string;
   agentName: string;
   clientName: string;
   visitId: string;
   timestamp: string;
   read: boolean;
-  /** Set when type === 'wfo_revert_request'; the requesting agent's user id. */
-  userId?: string;
-}
-
-/** A pending request from a field agent asking the admin to switch their WFO toggle off. */
-export interface WfoRevertRequest {
-  userId: string;
-  agentName: string;
-  date: string;        // YYYY-MM-DD the request was made for
-  requestedAt: string; // ISO timestamp
 }
 
 const STORAGE_KEYS = {
@@ -34,7 +24,7 @@ const STORAGE_KEYS = {
   TEAM: '@fieldpulse_team',
   OFFICE_STATUS: '@fieldpulse_office_status',
   OFFICE_HISTORY: '@fieldpulse_office_history',
-  WFO_REVERT_REQUESTS: '@fieldpulse_wfo_revert_requests',
+  OFFICE_DURATION: '@fieldpulse_office_duration',
 };
 
 // Helper: write to both local AsyncStorage AND the shared server store
@@ -60,8 +50,7 @@ async function sharedGet(key: string): Promise<string | null> {
   return AsyncStorage.getItem(key);
 }
 
-// Shared helper used by both agent self-enable and admin-approved revert.
-// Writes today's WFO live state and the persistent history log for `userId`.
+// Write WFO live status + history for userId.
 async function writeWfoState(
   get: () => AppState,
   set: (partial: Partial<AppState>) => void,
@@ -82,10 +71,8 @@ async function writeWfoState(
   if (isOffice && !userHistory.includes(today)) {
     userHistory.push(today);
     userHistory.sort();
-  } else if (!isOffice) {
-    const idx = userHistory.indexOf(today);
-    if (idx !== -1) userHistory.splice(idx, 1);
   }
+  // Note: we keep the history date even when toggling off so the day is still recorded.
   const updatedHistory = { ...officeHistory, [userId]: userHistory };
 
   await Promise.all([
@@ -121,7 +108,8 @@ interface AppState {
   activeVisit: Visit | null;
   officeToday: Record<string, string>; // userId → date string (today = WFO)
   officeHistory: Record<string, string[]>; // userId → sorted array of WFO dates
-  wfoRevertRequests: Record<string, WfoRevertRequest>; // userId → pending revert request
+  officeDuration: Record<string, Record<string, number>>; // userId → date → total minutes in office
+  officeStartTime: Record<string, string>; // userId → ISO timestamp of current session start (in-memory)
 
   // Admin Notifications
   notifications: AdminNotification[];
@@ -164,10 +152,7 @@ interface AppState {
   setWorkingFromOffice: (isOffice: boolean) => Promise<void>;
   getOfficeHistory: () => Record<string, string[]>;
 
-  // WFO revert request flow
-  requestWfoRevert: () => Promise<void>;
-  approveWfoRevert: (userId: string) => Promise<void>;
-  denyWfoRevert: (userId: string) => Promise<void>;
+  getOfficeDuration: () => Record<string, Record<string, number>>;
 
   // Live refresh
   refreshData: () => Promise<void>;
@@ -200,7 +185,8 @@ export const useStore = create<AppState>((set, get) => ({
   activeVisit: null,
   officeToday: {},
   officeHistory: {},
-  wfoRevertRequests: {},
+  officeDuration: {},
+  officeStartTime: {},
   notifications: [],
 
   addNotification: (notification) => {
@@ -507,14 +493,14 @@ export const useStore = create<AppState>((set, get) => ({
       const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : current.officeToday;
       const officeHistoryStr = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
       const officeHistory: Record<string, string[]> = officeHistoryStr ? JSON.parse(officeHistoryStr) : current.officeHistory;
-      const wfoReqStr = await sharedGet(STORAGE_KEYS.WFO_REVERT_REQUESTS);
-      const wfoRevertRequests: Record<string, WfoRevertRequest> = wfoReqStr ? JSON.parse(wfoReqStr) : current.wfoRevertRequests;
+      const officeDurationStr = await sharedGet(STORAGE_KEYS.OFFICE_DURATION);
+      const officeDuration: Record<string, Record<string, number>> = officeDurationStr ? JSON.parse(officeDurationStr) : current.officeDuration;
       const currentUser = current.currentUser;
       const activeVisit = currentUser
         ? visits.find((v: Visit) => v.status === 'in_progress' && v.userId === currentUser.id) || null
         : null;
 
-      set({ visits, clients, teamMembers, activeVisit, officeToday, officeHistory, wfoRevertRequests });
+      set({ visits, clients, teamMembers, activeVisit, officeToday, officeHistory, officeDuration });
       
       // If we have in-memory data but server is empty, push data back to server
       if (!visitsStr && visits.length > 0) {
@@ -531,78 +517,39 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Internal: write WFO state for a given user id (used by agent self-enable
-  // and by admin-approved revert). Updates today's live status + history log.
   setWorkingFromOffice: async (isOffice: boolean) => {
-    const { currentUser } = get();
+    const { currentUser, officeStartTime, officeDuration } = get();
     if (!currentUser) return;
-    // Agents can only set themselves to ON via this path. Turning OFF requires
-    // an admin-approved revert request — reject silent off-toggles here.
-    if (!isOffice && currentUser.role !== 'admin') {
-      console.warn('Agents cannot directly disable WFO; submit a revert request instead.');
-      return;
+    const userId = currentUser.id;
+    const today = getToday();
+    const now = getNow();
+
+    if (isOffice) {
+      // Record session start time
+      set({ officeStartTime: { ...officeStartTime, [userId]: now } });
+    } else {
+      // Compute elapsed minutes since session start and accumulate
+      const startIso = officeStartTime[userId];
+      if (startIso) {
+        const elapsed = Math.round((new Date(now).getTime() - new Date(startIso).getTime()) / 60000);
+        const userDuration = { ...(officeDuration[userId] || {}) };
+        userDuration[today] = (userDuration[today] || 0) + elapsed;
+        const updatedDuration = { ...officeDuration, [userId]: userDuration };
+        await sharedSet(STORAGE_KEYS.OFFICE_DURATION, JSON.stringify(updatedDuration));
+        broadcastChange([STORAGE_KEYS.OFFICE_DURATION]);
+        set({ officeDuration: updatedDuration });
+      }
+      // Clear session start
+      const updatedStart = { ...officeStartTime };
+      delete updatedStart[userId];
+      set({ officeStartTime: updatedStart });
     }
-    await writeWfoState(get, set, currentUser.id, isOffice);
+
+    await writeWfoState(get, set, userId, isOffice);
   },
 
   getOfficeHistory: () => get().officeHistory,
-
-  // ── WFO revert request flow ─────────────────────────────────
-  requestWfoRevert: async () => {
-    const { currentUser, wfoRevertRequests, officeToday } = get();
-    if (!currentUser || currentUser.role !== 'field_agent') return;
-    const today = getToday();
-    // Only meaningful if the agent is currently marked WFO today
-    if (officeToday[currentUser.id] !== today) return;
-    // Idempotent: don't create duplicates
-    if (wfoRevertRequests[currentUser.id]) return;
-
-    const request: WfoRevertRequest = {
-      userId: currentUser.id,
-      agentName: currentUser.name,
-      date: today,
-      requestedAt: getNow(),
-    };
-    const updated = { ...wfoRevertRequests, [currentUser.id]: request };
-    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
-    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
-    set({ wfoRevertRequests: updated });
-
-    // Push event so admin tabs see a live notification
-    pushSyncEvent({
-      type: 'wfo_revert_request',
-      message: `${currentUser.name} requested to switch from Office to Field`,
-      agentName: currentUser.name,
-      clientName: '',
-      visitId: currentUser.id, // reuse field for routing/dedupe
-    });
-  },
-
-  approveWfoRevert: async (userId: string) => {
-    const { currentUser, wfoRevertRequests } = get();
-    if (!currentUser || currentUser.role !== 'admin') return;
-    if (!wfoRevertRequests[userId]) return;
-
-    // Turn off WFO for that user (admin override)
-    await writeWfoState(get, set, userId, false);
-
-    const updated = { ...get().wfoRevertRequests };
-    delete updated[userId];
-    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
-    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
-    set({ wfoRevertRequests: updated });
-  },
-
-  denyWfoRevert: async (userId: string) => {
-    const { currentUser, wfoRevertRequests } = get();
-    if (!currentUser || currentUser.role !== 'admin') return;
-    if (!wfoRevertRequests[userId]) return;
-    const updated = { ...wfoRevertRequests };
-    delete updated[userId];
-    await sharedSet(STORAGE_KEYS.WFO_REVERT_REQUESTS, JSON.stringify(updated));
-    broadcastChange([STORAGE_KEYS.WFO_REVERT_REQUESTS]);
-    set({ wfoRevertRequests: updated });
-  },
+  getOfficeDuration: () => get().officeDuration,
 
   // ── Settings ──────────────────────────────────────
   updateSettings: async (updates) => {
@@ -635,8 +582,8 @@ export const useStore = create<AppState>((set, get) => ({
       const officeToday: Record<string, string> = officeStr ? JSON.parse(officeStr) : {};
       const officeHistoryStr2 = await sharedGet(STORAGE_KEYS.OFFICE_HISTORY);
       const officeHistory: Record<string, string[]> = officeHistoryStr2 ? JSON.parse(officeHistoryStr2) : {};
-      const wfoReqStr = await sharedGet(STORAGE_KEYS.WFO_REVERT_REQUESTS);
-      const wfoRevertRequests: Record<string, WfoRevertRequest> = wfoReqStr ? JSON.parse(wfoReqStr) : {};
+      const officeDurationStr2 = await sharedGet(STORAGE_KEYS.OFFICE_DURATION);
+      const officeDuration: Record<string, Record<string, number>> = officeDurationStr2 ? JSON.parse(officeDurationStr2) : {};
 
       // Find active visit for the current user only
       const activeVisit = currentUser
@@ -653,7 +600,7 @@ export const useStore = create<AppState>((set, get) => ({
         activeVisit,
         officeToday,
         officeHistory,
-        wfoRevertRequests,
+        officeDuration,
         isLoading: false,
       });
       

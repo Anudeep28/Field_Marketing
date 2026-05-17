@@ -14,11 +14,10 @@ import { useIsMobile } from '../../utils/responsive';
 
 const LEAD_FILTERS: { value: LeadStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
+  { value: 'new_enquiry', label: 'New Enquiry' },
+  { value: 'trial', label: 'Trial' },
+  { value: 'collection', label: 'Collection' },
+  { value: 'normal_visit', label: 'Normal Visit' },
 ];
 
 export default function ClientsScreen() {

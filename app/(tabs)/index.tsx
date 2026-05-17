@@ -31,81 +31,16 @@ export default function DashboardScreen() {
   const logout = useStore((s) => s.logout);
   const officeToday = useStore((s) => s.officeToday);
   const setWorkingFromOffice = useStore((s) => s.setWorkingFromOffice);
-  const wfoRevertRequests = useStore((s) => s.wfoRevertRequests);
-  const requestWfoRevert = useStore((s) => s.requestWfoRevert);
-  const approveWfoRevert = useStore((s) => s.approveWfoRevert);
-  const denyWfoRevert = useStore((s) => s.denyWfoRevert);
 
   const isAgent = currentUser?.role === 'field_agent';
   const isAdmin = currentUser?.role === 'admin';
   const today = getToday();
   const isWorkingFromOffice = isAgent && !!currentUser && officeToday[currentUser.id] === today;
-  const myRevertRequest = isAgent && currentUser ? wfoRevertRequests[currentUser.id] : undefined;
-  const hasPendingRevert = !!myRevertRequest;
 
-  // Pending WFO revert requests for admin to action (sorted oldest first).
-  const pendingReverts = useMemo(() => {
-    if (!isAdmin) return [];
-    return Object.values(wfoRevertRequests).sort((a, b) =>
-      a.requestedAt.localeCompare(b.requestedAt)
-    );
-  }, [wfoRevertRequests, isAdmin]);
-
-  // Agent: handle WFO toggle press.
-  // - Off  → confirm to enable, then locked.
-  // - On   → prompt to request admin revert (since agent can't disable directly).
-  // - Pending → inform agent the request is awaiting admin action.
   const handleWfoTogglePress = useCallback(() => {
     if (!isAgent) return;
-    if (!isWorkingFromOffice) {
-      showAlert(
-        'Switch to Office mode?',
-        'Once enabled, you will not be able to switch back to Field on your own. Your admin will need to approve a revert request.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Enable Office Mode', onPress: () => setWorkingFromOffice(true) },
-        ]
-      );
-      return;
-    }
-    if (hasPendingRevert) {
-      showAlert(
-        'Revert request pending',
-        'Your admin has been notified and will review your request to switch back to Field.'
-      );
-      return;
-    }
-    showAlert(
-      'Request switch to Field?',
-      'Send a request to your admin to switch your status back to Field. They will need to approve it.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send Request', onPress: () => requestWfoRevert() },
-      ]
-    );
-  }, [isAgent, isWorkingFromOffice, hasPendingRevert, setWorkingFromOffice, requestWfoRevert]);
-
-  const handleApproveRevert = useCallback((userId: string, agentName: string) => {
-    showAlert(
-      'Approve revert?',
-      `${agentName}'s status will switch from Office to Field for today.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Approve', onPress: () => approveWfoRevert(userId) },
-      ]
-    );
-  }, [approveWfoRevert]);
-
-  const handleDenyRevert = useCallback((userId: string, agentName: string) => {
-    showAlert(
-      'Deny revert?',
-      `${agentName} will remain marked as working from Office today.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Deny', style: 'destructive', onPress: () => denyWfoRevert(userId) },
-      ]
-    );
-  }, [denyWfoRevert]);
+    setWorkingFromOffice(!isWorkingFromOffice);
+  }, [isAgent, isWorkingFromOffice, setWorkingFromOffice]);
 
   const toggleAnim = useRef(new Animated.Value(isWorkingFromOffice ? 1 : 0)).current;
   useEffect(() => {
@@ -411,52 +346,6 @@ export default function DashboardScreen() {
         <>
           <Text style={[styles.sectionTitle, { fontSize: fs.lg, paddingHorizontal: sp.lg, marginBottom: sp.md }]}>Organisation Overview</Text>
 
-          {/* Pending WFO revert requests */}
-          {pendingReverts.length > 0 && (
-            <View style={{ paddingHorizontal: sp.lg, marginBottom: sp.lg }}>
-              <Card style={styles.wfoRequestsCard}>
-                <View style={styles.wfoRequestsHeader}>
-                  <Ionicons name="business" size={18} color={Colors.warning} />
-                  <Text style={[styles.wfoRequestsTitle, { fontSize: fs.md }]}>
-                    Office Mode Revert Requests
-                  </Text>
-                  <View style={styles.wfoRequestsBadge}>
-                    <Text style={styles.wfoRequestsBadgeText}>{pendingReverts.length}</Text>
-                  </View>
-                </View>
-                <Text style={[styles.wfoRequestsSubtitle, { fontSize: fs.xs }]}>
-                  Agents asking to switch back to Field for today.
-                </Text>
-                {pendingReverts.map((req) => (
-                  <View key={req.userId} style={styles.wfoRequestRow}>
-                    <View style={styles.wfoRequestInfo}>
-                      <Text style={styles.wfoRequestName}>{req.agentName}</Text>
-                      <Text style={styles.wfoRequestMeta}>
-                        Requested {formatTime(req.requestedAt)}
-                      </Text>
-                    </View>
-                    <View style={styles.wfoRequestActions}>
-                      <TouchableOpacity
-                        style={[styles.wfoActionBtn, styles.wfoActionDeny]}
-                        onPress={() => handleDenyRevert(req.userId, req.agentName)}
-                      >
-                        <Ionicons name="close" size={16} color={Colors.danger} />
-                        <Text style={[styles.wfoActionText, { color: Colors.danger }]}>Deny</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.wfoActionBtn, styles.wfoActionApprove]}
-                        onPress={() => handleApproveRevert(req.userId, req.agentName)}
-                      >
-                        <Ionicons name="checkmark" size={16} color={Colors.textOnPrimary} />
-                        <Text style={[styles.wfoActionText, { color: Colors.textOnPrimary }]}>Approve</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            </View>
-          )}
-
           {/* Quick Actions */}
           <View style={[styles.quickActions, { paddingHorizontal: sp.lg, paddingVertical: sp.xl, gap: sp.md }]}>
             <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/visit/new')}>
@@ -594,14 +483,10 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.wfoContent}>
             <Text style={[styles.wfoTitle, { fontSize: fs.md, color: isWorkingFromOffice ? Colors.textOnPrimary : Colors.text }]}>
-              {isWorkingFromOffice ? 'Working from Office Today' : 'Working from Field Today'}
+              Working from Office Today
             </Text>
             <Text style={[styles.wfoSubtitle, { fontSize: fs.xs, color: isWorkingFromOffice ? 'rgba(255,255,255,0.8)' : Colors.textSecondary }]}>
-              {isWorkingFromOffice
-                ? hasPendingRevert
-                  ? 'Revert request sent — awaiting admin approval'
-                  : 'Locked. Tap to request switch to field.'
-                : 'Tap to mark yourself as working from office'}
+              {isWorkingFromOffice ? 'Tap to switch back to field' : 'Tap to mark yourself as working from office'}
             </Text>
           </View>
           <View style={styles.wfoToggle}>
@@ -652,6 +537,12 @@ export default function DashboardScreen() {
               <Ionicons name="location" size={28} color={Colors.textOnPrimary} />
             </View>
             <Text style={styles.quickActionText}>My Visits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/visit/new')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary }]}>
+              <Ionicons name="add-circle" size={24} color={Colors.textOnPrimary} />
+            </View>
+            <Text style={styles.quickActionText}>Plan Visit</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/calendar')}>
             <View style={[styles.quickActionIcon, { backgroundColor: Colors.accent }]}>

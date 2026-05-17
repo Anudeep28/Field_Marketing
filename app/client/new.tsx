@@ -9,13 +9,10 @@ import { showAlert } from '../../utils/alert';
 import { useIsMobile } from '../../utils/responsive';
 
 const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
+  { value: 'new_enquiry', label: 'New Enquiry' },
+  { value: 'trial', label: 'Trial' },
+  { value: 'collection', label: 'Collection' },
+  { value: 'normal_visit', label: 'Normal Visit' },
 ];
 
 export default function NewClientScreen() {
@@ -29,27 +26,23 @@ export default function NewClientScreen() {
   }, [currentUser]);
 
   const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [leadStatus, setLeadStatus] = useState<LeadStatus>('new');
+  const [leadStatus, setLeadStatus] = useState<LeadStatus>('new_enquiry');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim() || !phone.trim()) {
-      showAlert('Required', 'Please enter client name and phone number');
+    if (!name.trim()) {
+      showAlert('Required', 'Please enter company name');
       return;
     }
     setLoading(true);
     try {
       await addClient({
         name: name.trim(),
-        company: company.trim() || undefined,
-        email: email.trim() || undefined,
-        phone: phone.trim(),
+        company: name.trim() || undefined,
+        phone: '',
         address: address.trim() || undefined,
         leadStatus,
         assignedTo: currentUser?.id || '',
@@ -73,53 +66,17 @@ export default function NewClientScreen() {
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={[styles.form, { padding: sp.lg }]}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Client Name *</Text>
+          <Text style={styles.label}>Company Name *</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Full name"
+            placeholder="Enter company name"
             placeholderTextColor={Colors.textTertiary}
             autoCapitalize="words"
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Company</Text>
-          <TextInput
-            style={styles.input}
-            value={company}
-            onChangeText={setCompany}
-            placeholder="Company name"
-            placeholderTextColor={Colors.textTertiary}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Phone *</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+91 98765 43210"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="phone-pad"
-            />
-          </View>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="email@example.com"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Address</Text>
@@ -178,7 +135,7 @@ export default function NewClientScreen() {
           title="Add Client"
           onPress={handleSave}
           loading={loading}
-          disabled={!name.trim() || !phone.trim()}
+          disabled={!name.trim()}
           fullWidth
           size="lg"
           style={styles.saveButton}

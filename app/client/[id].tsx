@@ -64,26 +64,15 @@ export default function ClientDetailScreen() {
         <StatusBadge status={client.leadStatus} type="lead" />
       </View>
 
-      {/* Contact Info */}
-      <Card>
-        <Text style={styles.sectionTitle}>Contact Information</Text>
-        <View style={styles.contactRow}>
-          <Ionicons name="call-outline" size={18} color={Colors.primary} />
-          <Text style={styles.contactText}>{client.phone}</Text>
-        </View>
-        {client.email && (
-          <View style={styles.contactRow}>
-            <Ionicons name="mail-outline" size={18} color={Colors.primary} />
-            <Text style={styles.contactText}>{client.email}</Text>
-          </View>
-        )}
-        {client.address && (
+      {/* Address */}
+      {client.address && (
+        <Card>
           <View style={styles.contactRow}>
             <Ionicons name="location-outline" size={18} color={Colors.primary} />
             <Text style={styles.contactText}>{client.address}</Text>
           </View>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Stats */}
       <View style={styles.statsRow}>

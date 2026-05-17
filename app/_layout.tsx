@@ -36,7 +36,6 @@ export default function RootLayout() {
           agentName: evt.agentName,
           clientName: evt.clientName,
           visitId: evt.visitId,
-          ...(evt.type === 'wfo_revert_request' ? { userId: evt.visitId } : {}),
         });
       }
     });

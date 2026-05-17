@@ -129,13 +129,10 @@ export const StatusColors: Record<string, { bg: string; text: string }> = {
 };
 
 export const LeadStatusColors: Record<string, { bg: string; text: string }> = {
-  new: { bg: '#E0E7FF', text: '#3730A3' },
-  contacted: { bg: '#EDE9FE', text: '#5B21B6' },
-  qualified: { bg: '#FEF3C7', text: '#92400E' },
-  proposal: { bg: '#FDE68A', text: '#78350F' },
-  negotiation: { bg: '#FBCFE8', text: '#9D174D' },
-  won: { bg: '#D1FAE5', text: '#065F46' },
-  lost: { bg: '#FEE2E2', text: '#991B1B' },
+  new_enquiry: { bg: '#E0E7FF', text: '#3730A3' },
+  trial: { bg: '#FEF3C7', text: '#92400E' },
+  collection: { bg: '#D1FAE5', text: '#065F46' },
+  normal_visit: { bg: '#EDE9FE', text: '#5B21B6' },
 };
 
 export const PurposeLabels: Record<string, string> = {
